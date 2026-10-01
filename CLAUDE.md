@@ -4,8 +4,12 @@
 
 - Unity **6000.6.3f1** (Unity 6)
 - 렌더 파이프라인: **Built-in** (URP/HDRP 아님)
-- 입력: **Both** (Active Input Handling). 구버전 `UnityEngine.Input`과 새 Input System(1.20.0)을 함께 쓴다.
-  AR Foundation의 카메라 추적(`TrackedPoseDriver`)이 Input System을 필요로 해서 Both로 바꿨다.
+- 입력: **Input System Package (New)만** 쓴다 (Input System 1.20.0).
+  AR Foundation의 카메라 추적(`TrackedPoseDriver`)이 Input System을 필요로 하고, "Both"는 Android 빌드에서 지원되지 않는다.
+  - **구버전 `UnityEngine.Input`(`Input.gyro`, `Input.acceleration`, `Input.GetKey` 등)은 쓰지 않는다.** 실행 중 예외가 난다.
+  - 센서는 `UnityEngine.InputSystem`의 `Accelerometer`, `Gyroscope`, `AttitudeSensor`, `GravitySensor`로 읽는다.
+    센서는 기본으로 꺼져 있으니 `InputSystem.EnableDevice(...)`로 켜야 한다.
+  - 에디터 테스트 입력은 `Keyboard.current`, `Mouse.current`를 쓴다.
 - AR: **AR Foundation 6.6.2 + Google ARCore 6.6.2**. 빌드 대상은 **Android** 하나다.
   - 그래픽 API는 **OpenGLES3만** 쓴다(Vulkan을 앞에 두면 ARCore가 최소 API 29를 요구한다).
   - IL2CPP + ARM64, 최소 API 26, 화면은 **Landscape Left 고정**(폰을 활에 가로로 거치).
