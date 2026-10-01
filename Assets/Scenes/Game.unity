@@ -818,7 +818,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2a8d91ec8ae31004a813b68de106094c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BeOdysseus.Dev.ARDebugOverlay
-  _arCamera: {fileID: 0}
+  _arCamera: {fileID: 60209883}
+  _config: {fileID: 11400000, guid: 1fcf9df48565e9044bdf6baa78976420, type: 2}
+  _accelerometer: {fileID: 1958950841}
+  _game: {fileID: 1958950836}
   _fontSize: 32
   _textColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
 --- !u!4 &534297140
@@ -1528,6 +1531,10 @@ GameObject:
   - component: {fileID: 1958950838}
   - component: {fileID: 1958950837}
   - component: {fileID: 1958950836}
+  - component: {fileID: 1958950842}
+  - component: {fileID: 1958950841}
+  - component: {fileID: 1958950840}
+  - component: {fileID: 1958950839}
   m_Layer: 0
   m_Name: Game
   m_TagString: Untagged
@@ -1552,6 +1559,7 @@ MonoBehaviour:
   _calibrator: {fileID: 1958950837}
   _playArea: {fileID: 162983063}
   _calibrationView: {fileID: 1099123661}
+  _shotJudge: {fileID: 1958950839}
   _monsterPrefab: {fileID: 4582527593450663180, guid: 63b7d8e5c52373f4b8cce21d662cfcec, type: 3}
 --- !u!114 &1958950837
 MonoBehaviour:
@@ -1582,6 +1590,60 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1958950839
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1958950835}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a87e96d4fa301e24794ce704a42da5c1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BeOdysseus.ShotJudge
+  _config: {fileID: 11400000, guid: 1fcf9df48565e9044bdf6baa78976420, type: 2}
+  _aimHistory: {fileID: 1958950842}
+  _accelerometerDetector: {fileID: 1958950841}
+  _editorTrigger: {fileID: 1958950840}
+--- !u!114 &1958950840
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1958950835}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b35e73fc5e6d485468d0f7cad957a516, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BeOdysseus.EditorShotTrigger
+--- !u!114 &1958950841
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1958950835}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 117d1d93e311b8f4ab1e8e41320e5b60, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BeOdysseus.AccelerometerShotDetector
+  _config: {fileID: 11400000, guid: 1fcf9df48565e9044bdf6baa78976420, type: 2}
+--- !u!114 &1958950842
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1958950835}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cff9304f0fcf73f42ba2cd70603ef870, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BeOdysseus.AimHistory
+  _aim: {fileID: 60209878}
 --- !u!1 &1981885204
 GameObject:
   m_ObjectHideFlags: 0

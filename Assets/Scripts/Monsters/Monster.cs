@@ -10,6 +10,8 @@ namespace BeOdysseus
     public class Monster : MonoBehaviour
     {
         [SerializeField] private GameConfig _config;
+        [Tooltip("정확도 계산의 기준점. 이미지 안에서의 비율 위치(0~1). 기본은 정가운데. 몸통이나 약점으로 옮길 수 있다.")]
+        [SerializeField] private Vector2 _targetPointNormalized = new(0.5f, 0.5f);
 
         private SpriteRenderer _renderer;
         private PlayArea _area;
@@ -21,21 +23,44 @@ namespace BeOdysseus
         /// <summary>정면 기준 현재 각도(x: 오른쪽 +, y: 위쪽 +).</summary>
         public Vector2 Angles => _angles;
 
+        /// <summary>정확도 계산 기준점의 월드 위치.</summary>
+        public Vector3 TargetPoint
+        {
+            get
+            {
+                Bounds b = _renderer.sprite.bounds;
+                Vector3 local = b.min + Vector3.Scale(b.size, _targetPointNormalized);
+                return transform.TransformPoint(new Vector3(local.x, local.y, 0f));
+            }
+        }
+
+        /// <summary>조준선(시작점, 방향)이 몬스터 이미지 사각형 안을 지나는지.</summary>
+        public bool IsHitBy(Vector3 origin, Vector3 direction)
+        {
+            var plane = new Plane(transform.forward, transform.position);
+            if (!plane.Raycast(new Ray(origin, direction), out float distance)) return false;
+
+            Vector3 local = transform.InverseTransformPoint(origin + direction * distance);
+            Bounds b = _renderer.sprite.bounds;
+            return local.x >= b.min.x && local.x <= b.max.x && local.y >= b.min.y && local.y <= b.max.y;
+        }
+
         private void Awake()
         {
             _renderer = GetComponent<SpriteRenderer>();
         }
 
-        public void Init(PlayArea area, Transform viewer, Vector2 startAngles)
+        /// <summary>활동 범위에 몬스터를 세운다. randomPosition이 false면 정면 정가운데에서 시작한다.</summary>
+        public void Init(PlayArea area, Transform viewer, bool randomPosition)
         {
             _area = area;
             _viewer = viewer;
-            _angles = startAngles;
-            _target = startAngles;
-            _pauseLeft = _config.MonsterPauseMinSeconds;
-
             float spriteHeight = _renderer.sprite.bounds.size.y;
             transform.localScale = Vector3.one * (_config.MonsterHeightMeters / spriteHeight);
+
+            _angles = randomPosition ? _area.RandomAngles(HalfSizeDegrees()) : Vector2.zero;
+            _target = _angles;
+            _pauseLeft = _config.MonsterPauseMinSeconds;
             UpdatePose();
         }
 
