@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 18a0b9e1349d2f04aba4117bd0c1ff66, type: 3}
+  m_Name: Stages
+  m_EditorClassIdentifier: Assembly-CSharp::BeOdysseus.StageList
+  _stages:
+  - _monsterSprite: {fileID: 21300000, guid: 229cc68c4d5443d4993e694abf487edb, type: 3}
+    _resultBackground: {fileID: 21300000, guid: 6e052d3f5a07995458fd51339c7c04ef, type: 3}
+  - _monsterSprite: {fileID: 21300000, guid: 229cc68c4d5443d4993e694abf487edb, type: 3}
+    _resultBackground: {fileID: 21300000, guid: 6e052d3f5a07995458fd51339c7c04ef, type: 3}

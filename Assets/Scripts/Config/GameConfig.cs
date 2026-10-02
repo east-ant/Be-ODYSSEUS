@@ -39,8 +39,18 @@ namespace BeOdysseus
         [Tooltip("목표 지점에 도착한 뒤 멈춰 있는 시간(초)의 최대값.")]
         [SerializeField, Min(0f)] private float _monsterPauseMaxSeconds = 1.5f;
 
-        [Tooltip("처치된 몬스터가 다시 나타날 때까지의 시간(초).")]
-        [SerializeField, Min(0f)] private float _monsterRespawnSeconds = 1f;
+        [Header("스테이지")]
+        [Tooltip("한 스테이지에서 쏠 수 있는 화살 수. 이 안에 몬스터를 맞히면 클리어.")]
+        [SerializeField, Min(1)] private int _arrowsPerStage = 2;
+
+        [Tooltip("한 스테이지 제한 시간(초). 다 되면 실패로 끝난다.")]
+        [SerializeField, Min(1f)] private float _stageTimeLimitSeconds = 60f;
+
+        [Tooltip("스테이지가 끝난 뒤 결과 화면을 띄우기까지 기다리는 시간(초). 마지막 발의 결과를 눈으로 볼 수 있게 한다.")]
+        [SerializeField, Min(0f)] private float _resultDelaySeconds = 1f;
+
+        [Tooltip("결과 화면에서 다음 스테이지로 넘어가기까지 세는 시간(초).")]
+        [SerializeField, Min(1f)] private float _resultCountdownSeconds = 5f;
 
         [Header("발사 감지")]
         [Tooltip("가속도 센서에 요청할 측정 빈도(Hz). 기기가 지원하는 만큼만 적용된다.")]
@@ -76,7 +86,10 @@ namespace BeOdysseus
         public float MonsterMoveSpeedDegrees => _monsterMoveSpeedDegrees;
         public float MonsterPauseMinSeconds => _monsterPauseMinSeconds;
         public float MonsterPauseMaxSeconds => Mathf.Max(_monsterPauseMinSeconds, _monsterPauseMaxSeconds);
-        public float MonsterRespawnSeconds => _monsterRespawnSeconds;
+        public int ArrowsPerStage => _arrowsPerStage;
+        public float StageTimeLimitSeconds => _stageTimeLimitSeconds;
+        public float ResultDelaySeconds => _resultDelaySeconds;
+        public float ResultCountdownSeconds => _resultCountdownSeconds;
         public float AccelerometerSamplingHz => _accelerometerSamplingHz;
         public float ShotAccelerationThreshold => _shotAccelerationThreshold;
         public float ShotCooldownSeconds => _shotCooldownSeconds;

@@ -51,8 +51,9 @@ namespace BeOdysseus
         }
 
         /// <summary>활동 범위에 몬스터를 세운다. randomPosition이 false면 정면 정가운데에서 시작한다.</summary>
-        public void Init(PlayArea area, Transform viewer, bool randomPosition)
+        public void Init(PlayArea area, Transform viewer, Sprite sprite, bool randomPosition)
         {
+            if (sprite != null) _renderer.sprite = sprite;
             _area = area;
             _viewer = viewer;
             float spriteHeight = _renderer.sprite.bounds.size.y;
