@@ -5,7 +5,7 @@ using UnityEngine.XR.ARFoundation;
 namespace BeOdysseus.Dev
 {
     /// <summary>
-    /// 개발용 진단 표시. 화면 왼쪽 위에 글자로 띄운다.
+    /// 개발용 진단 표시. 화면 왼쪽 아래에 글자로 띄운다(위쪽의 안내 상자·스테이지 표시와 겹치지 않게).
     /// - AR 세션 상태, 추적이 안 되는 이유, 카메라 위치·회전, FPS
     /// - 가속도: 크기(가만히 있으면 약 1g), 지금 충격, 최근 2초 최고 충격, 발사 기준값, 센서 측정 빈도
     /// - 점수와 마지막 발사 판정
@@ -16,7 +16,7 @@ namespace BeOdysseus.Dev
         [SerializeField] private GameConfig _config;
         [SerializeField] private AccelerometerShotDetector _accelerometer;
         [SerializeField] private GameFlow _game;
-        [SerializeField] private int _fontSize = 32;
+        [SerializeField] private int _fontSize = 26;
         [SerializeField] private Color _textColor = Color.yellow;
 
         private readonly StringBuilder _text = new();
@@ -43,7 +43,11 @@ namespace BeOdysseus.Dev
             AppendTracking();
             AppendAccelerometer();
             AppendShots();
-            GUI.Label(new Rect(20, 20, Screen.width - 40, Screen.height - 40), _text.ToString(), _style);
+
+            var content = new GUIContent(_text.ToString());
+            float width = Screen.width - 40;
+            float height = _style.CalcHeight(content, width);
+            GUI.Label(new Rect(20, Screen.height - height - 20, width, height), content, _style);
         }
 
         private void AppendTracking()

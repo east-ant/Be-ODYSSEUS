@@ -7,17 +7,16 @@ namespace BeOdysseus
 {
     /// <summary>
     /// 게임 진행 순서:
-    /// 메인 화면 → AR 준비 대기 → 방향 정하기 → 스테이지(화살 2발, 60초) → 결과 화면(카운트다운) → 다음 스테이지 … → 메인 화면.
+    /// 메인 화면 → 튜토리얼(중앙점 정하기) → 스테이지(화살 2발, 60초) → 결과 화면(카운트다운) → 다음 스테이지 … → 메인 화면.
+    /// 중앙점은 튜토리얼에서만 정할 수 있고, 스테이지와 결과 화면에서는 바꿀 수 없다.
     /// 몬스터를 맞히면 바로 클리어, 화살을 다 쓰거나 시간이 다 되면 실패. 실패해도 결과를 보여 주고 다음으로 넘어간다.
-    /// 방향은 게임을 시작할 때 한 번 정하고 스테이지가 바뀌어도 유지한다(필요하면 "방향 다시 정하기").
     /// </summary>
     public class GameFlow : MonoBehaviour
     {
-        private const string WaitingMessage = "AR 준비 중… 주변을 천천히 비춰 주세요";
         private const string NextStageLabel = "다음 스테이지";
         private const string BackToMenuLabel = "메인 화면으로";
 
-        private enum Phase { MainMenu, WaitingForTracking, Calibrating, Playing, StageEnding, Result }
+        private enum Phase { MainMenu, Tutorial, Playing, StageEnding, Result }
 
         [SerializeField] private GameConfig _config;
         [SerializeField] private StageList _stages;
@@ -26,7 +25,7 @@ namespace BeOdysseus
         [SerializeField] private AimCalibrator _calibrator;
         [SerializeField] private PlayArea _playArea;
         [SerializeField] private MainMenuView _mainMenu;
-        [Tooltip("게임 중에만 보이는 화면 요소(조준점, 방향 다시 정하기 버튼, 스테이지 표시).")]
+        [Tooltip("AR 게임 화면에서만 보이는 요소(조준점, 스테이지 표시).")]
         [SerializeField] private GameObject _gameplayHud;
         [SerializeField] private StageHud _stageHud;
         [SerializeField] private CalibrationView _calibrationView;
@@ -37,7 +36,8 @@ namespace BeOdysseus
         private readonly List<ShotResult> _allShots = new();
         private Phase _phase;
         private Monster _monster;
-        private string _calibratingMessage;
+        private bool _isCenterSet;
+        private float _tutorialLeft;
         private int _stageIndex;
         private StageRun _stageRun;
         private StageResult _lastStageResult;
@@ -46,8 +46,8 @@ namespace BeOdysseus
         /// <summary>스테이지가 끝날 때마다(클리어든 실패든). 결과 화면·음성 피드백에서 쓸 값이 담긴다.</summary>
         public event Action<StageResult> StageFinished;
 
-        /// <summary>메인 화면이나 결과 화면이 아니라 AR 게임 화면이 보이는 중인지.</summary>
-        public bool IsInGameplay => _phase is Phase.WaitingForTracking or Phase.Calibrating or Phase.Playing or Phase.StageEnding;
+        /// <summary>메인 화면이나 결과 화면이 아니라 AR 게임 화면(튜토리얼 포함)이 보이는 중인지.</summary>
+        public bool IsInGameplay => _phase is Phase.Tutorial or Phase.Playing or Phase.StageEnding;
         /// <summary>게임 시작부터 지금까지의 점수(명중 1발당 1점).</summary>
         public int Score { get; private set; }
         public int ShotsFired => _allShots.Count;
@@ -56,15 +56,10 @@ namespace BeOdysseus
 
         private StageDefinition CurrentStage => _stages.Get(_stageIndex);
 
-        private void Awake()
-        {
-            _calibratingMessage = $"쏠 방향을 겨누고 {_config.CalibrationHoldSeconds:0.#}초 동안 가만히 계세요";
-        }
-
         private void OnEnable()
         {
             _mainMenu.StartPressed += OnStartPressed;
-            _calibrator.Calibrated += OnCalibrated;
+            _calibrationView.ButtonPressed += OnCenterButtonPressed;
             _shotJudge.Resolved += OnShotResolved;
             _resultView.CountdownFinished += OnResultCountdownFinished;
         }
@@ -72,7 +67,7 @@ namespace BeOdysseus
         private void OnDisable()
         {
             _mainMenu.StartPressed -= OnStartPressed;
-            _calibrator.Calibrated -= OnCalibrated;
+            _calibrationView.ButtonPressed -= OnCenterButtonPressed;
             _shotJudge.Resolved -= OnShotResolved;
             _resultView.CountdownFinished -= OnResultCountdownFinished;
         }
@@ -91,15 +86,6 @@ namespace BeOdysseus
             _phase = Phase.MainMenu;
         }
 
-        /// <summary>
-        /// 방향을 처음부터 다시 정한다. 화면의 "방향 다시 정하기" 버튼에 연결된다.
-        /// 스테이지 진행 중이면 남은 화살·시간은 그대로 두고, 다시 정한 뒤 이어서 한다.
-        /// </summary>
-        public void Recalibrate()
-        {
-            if (_phase is Phase.WaitingForTracking or Phase.Calibrating or Phase.Playing) BeginCalibration();
-        }
-
         private void OnStartPressed()
         {
             _mainMenu.Hide();
@@ -108,19 +94,19 @@ namespace BeOdysseus
             Score = 0;
             _stageIndex = 0;
             _stageRun = null;
-            BeginCalibration();
+            BeginTutorial();
         }
 
-        private void BeginCalibration()
+        private void BeginTutorial()
         {
             StopGameplay();
             _stageHud.Hide();
-            _phase = Phase.WaitingForTracking;
+            _isCenterSet = false;
+            _phase = Phase.Tutorial;
         }
 
         private void StopGameplay()
         {
-            _calibrator.Stop();
             _shotJudge.IsArmed = false;
             _playArea.Clear();
             HideMonster();
@@ -136,21 +122,8 @@ namespace BeOdysseus
 
             switch (_phase)
             {
-                case Phase.WaitingForTracking:
-                    _calibrationView.Show(WaitingMessage, 0f);
-                    if (!AimTracking.IsReliable) break;
-                    _calibrator.Begin();
-                    _phase = Phase.Calibrating;
-                    break;
-
-                case Phase.Calibrating:
-                    if (!AimTracking.IsReliable)
-                    {
-                        _calibrator.Stop();
-                        _phase = Phase.WaitingForTracking;
-                        break;
-                    }
-                    _calibrationView.Show(_calibratingMessage, _calibrator.Progress01);
+                case Phase.Tutorial:
+                    TickTutorial(Time.deltaTime);
                     break;
 
                 case Phase.Playing:
@@ -173,22 +146,35 @@ namespace BeOdysseus
             return keyboard != null && keyboard.escapeKey.wasPressedThisFrame;
         }
 
-        private void OnCalibrated(Pose front)
+        private void TickTutorial(float dt)
         {
-            _playArea.SetFront(front);
+            if (!_isCenterSet)
+            {
+                if (AimTracking.IsReliable) _calibrationView.ShowReady();
+                else _calibrationView.ShowWaitingForAr();
+                return;
+            }
+
+            _tutorialLeft -= dt;
+            _calibrationView.ShowConfirmed(_stageIndex + 1, Mathf.Max(1, Mathf.CeilToInt(_tutorialLeft)));
+            if (_tutorialLeft > 0f) return;
+
             _calibrationView.Hide();
-            if (_stageRun == null) BeginStage();
-            else ResumeStage();
+            BeginStage();
+        }
+
+        /// <summary>튜토리얼의 "방향 정하기"/"다시 정하기" 버튼. 지금 겨눈 방향을 중앙점으로 정하고 범위를 보여 준다.</summary>
+        private void OnCenterButtonPressed()
+        {
+            if (_phase != Phase.Tutorial || !AimTracking.IsReliable) return;
+            _playArea.SetFront(_calibrator.CaptureFront());
+            _isCenterSet = true;
+            _tutorialLeft = _config.TutorialConfirmSeconds;
         }
 
         private void BeginStage()
         {
             _stageRun = new StageRun(_stageIndex + 1, _config.ArrowsPerStage, _config.StageTimeLimitSeconds);
-            ResumeStage();
-        }
-
-        private void ResumeStage()
-        {
             ShowMonster(CurrentStage.MonsterSprite);
             _shotJudge.IsArmed = true;
             _stageHud.Show(_stageRun);

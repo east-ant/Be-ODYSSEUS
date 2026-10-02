@@ -9,12 +9,12 @@ namespace BeOdysseus
     [CreateAssetMenu(fileName = "GameConfig", menuName = "Be ODYSSEUS/Game Config")]
     public class GameConfig : ScriptableObject
     {
-        [Header("방향 정하기")]
-        [Tooltip("이 시간(초) 동안 가만히 겨누면 그 방향을 정면으로 정한다.")]
-        [SerializeField, Min(0.1f)] private float _calibrationHoldSeconds = 2f;
+        [Header("튜토리얼(중앙점 정하기)")]
+        [Tooltip("\"방향 정하기\" 버튼을 누르기 이만큼(초) 전의 조준 방향을 중앙점으로 쓴다. 화면을 누르는 손에 폰이 흔들린 방향을 피하려고.")]
+        [SerializeField, Min(0f)] private float _centerCaptureLookbackSeconds = 0.3f;
 
-        [Tooltip("조준 방향이 이보다 빨리(도/초) 움직이면 '움직이는 중'으로 보고 시간을 처음부터 다시 잰다.")]
-        [SerializeField, Min(0f)] private float _calibrationMaxAngularSpeed = 6f;
+        [Tooltip("중앙점을 정한 뒤 1스테이지가 시작되기까지의 시간(초). 이 동안 범위를 확인하고 다시 정할 수 있다.")]
+        [SerializeField, Min(0f)] private float _tutorialConfirmSeconds = 3f;
 
         [Header("몬스터 활동 범위")]
         [Tooltip("정면에서 좌우 한쪽으로 몇 도까지인지.")]
@@ -78,8 +78,8 @@ namespace BeOdysseus
         [Tooltip("조준 안정도: 평균 흔들림이 이 각도(도) 이상이면 0%.")]
         [SerializeField, Min(0.1f)] private float _stabilityZeroDegrees = 5f;
 
-        public float CalibrationHoldSeconds => _calibrationHoldSeconds;
-        public float CalibrationMaxAngularSpeed => _calibrationMaxAngularSpeed;
+        public float CenterCaptureLookbackSeconds => _centerCaptureLookbackSeconds;
+        public float TutorialConfirmSeconds => _tutorialConfirmSeconds;
         public Vector2 AreaHalfSizeDegrees => new(_areaHalfWidthDegrees, _areaHalfHeightDegrees);
         public float AreaDistanceMeters => _areaDistanceMeters;
         public float MonsterHeightMeters => _monsterHeightMeters;
