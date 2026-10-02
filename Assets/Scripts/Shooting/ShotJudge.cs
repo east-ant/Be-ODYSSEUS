@@ -10,6 +10,8 @@ namespace BeOdysseus
         public readonly ShotEvent Shot;
         public readonly AimSample Aim;
         public readonly bool Hit;
+        /// <summary>화살이 닿은 것으로 보는 월드 위치. 몬스터 평면 위의 점, 평면과 안 만나면 활동 범위 거리의 조준선 위 점.</summary>
+        public readonly Vector3 ImpactPoint;
         /// <summary>조준점과 몬스터 중심 사이 각도(도). 몬스터가 없으면 NaN.</summary>
         public readonly float OffsetDegrees;
         public readonly float Accuracy01;
@@ -17,11 +19,12 @@ namespace BeOdysseus
         public readonly float WobbleDegrees;
         public readonly float Stability01;
 
-        public ShotResult(ShotEvent shot, AimSample aim, bool hit, float offsetDegrees, float accuracy01, float wobbleDegrees, float stability01)
+        public ShotResult(ShotEvent shot, AimSample aim, bool hit, Vector3 impactPoint, float offsetDegrees, float accuracy01, float wobbleDegrees, float stability01)
         {
             Shot = shot;
             Aim = aim;
             Hit = hit;
+            ImpactPoint = impactPoint;
             OffsetDegrees = offsetDegrees;
             Accuracy01 = accuracy01;
             WobbleDegrees = wobbleDegrees;
@@ -86,16 +89,22 @@ namespace BeOdysseus
             bool hit = false;
             float offset = float.NaN;
             float accuracy = 0f;
+            Vector3 impact = aim.Position + aim.Forward * _config.AreaDistanceMeters;
             if (Target != null && Target.gameObject.activeInHierarchy)
             {
-                hit = Target.IsHitBy(aim.Position, aim.Forward);
+                if (Target.TryIntersect(aim.Position, aim.Forward, out Vector3 onPlane))
+                {
+                    hit = Target.Contains(onPlane);
+                    // 몬스터에서 크게 벗어나 비스듬히 만나면 평면 위 점이 아주 멀어지므로, 그때는 활동 범위 거리의 점을 쓴다.
+                    if (hit || Vector3.Distance(aim.Position, onPlane) <= _config.AreaDistanceMeters * 2f) impact = onPlane;
+                }
                 offset = Vector3.Angle(aim.Forward, Target.TargetPoint - aim.Position);
                 accuracy = Mathf.Clamp01(1f - offset / _config.AccuracyZeroDegrees);
             }
 
             float wobble = MeasureWobbleDegrees(aim.Time);
             float stability = Mathf.InverseLerp(_config.StabilityZeroDegrees, _config.StabilityPerfectDegrees, wobble);
-            return new ShotResult(shot, aim, hit, offset, accuracy, wobble, stability);
+            return new ShotResult(shot, aim, hit, impact, offset, accuracy, wobble, stability);
         }
 
         /// <summary>end 직전 구간에서 조준 방향이 평균 방향으로부터 평균 몇 도 벗어났는지. 롤은 조준점을 움직이지 않으므로 방향만 본다.</summary>

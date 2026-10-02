@@ -12,12 +12,24 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5b85a7dc3d8953a419ad2e4177bcddb4, type: 3}
   m_Name: GameConfig
   m_EditorClassIdentifier: Assembly-CSharp::BeOdysseus.GameConfig
-  _calibrationHoldSeconds: 2
-  _calibrationMaxAngularSpeed: 6
-  _areaHalfWidthDegrees: 20
-  _areaHalfHeightDegrees: 10
+  _centerCaptureLookbackSeconds: 0.3
+  _tutorialConfirmSeconds: 3
+  _areaHalfWidthDegrees: 26
+  _areaHalfHeightDegrees: 13
   _areaDistanceMeters: 3
   _monsterHeightMeters: 0.5
   _monsterMoveSpeedDegrees: 6
   _monsterPauseMinSeconds: 0.5
   _monsterPauseMaxSeconds: 1.5
+  _arrowsPerStage: 2
+  _stageTimeLimitSeconds: 60
+  _resultDelaySeconds: 1
+  _resultCountdownSeconds: 5
+  _accelerometerSamplingHz: 200
+  _shotAccelerationThreshold: 2
+  _shotCooldownSeconds: 1
+  _shotAimLookbackSeconds: 0.05
+  _accuracyZeroDegrees: 10
+  _stabilityWindowSeconds: 1
+  _stabilityPerfectDegrees: 0.5
+  _stabilityZeroDegrees: 5

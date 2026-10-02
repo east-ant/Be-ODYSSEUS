@@ -34,13 +34,24 @@ namespace BeOdysseus
             }
         }
 
-        /// <summary>조준선(시작점, 방향)이 몬스터 이미지 사각형 안을 지나는지.</summary>
-        public bool IsHitBy(Vector3 origin, Vector3 direction)
+        /// <summary>조준선(시작점, 방향)이 몬스터 이미지가 놓인 평면과 만나는 점. 반대쪽을 겨누면 false.</summary>
+        public bool TryIntersect(Vector3 origin, Vector3 direction, out Vector3 point)
         {
             var plane = new Plane(transform.forward, transform.position);
-            if (!plane.Raycast(new Ray(origin, direction), out float distance)) return false;
+            if (plane.Raycast(new Ray(origin, direction), out float distance))
+            {
+                point = origin + direction * distance;
+                return true;
+            }
 
-            Vector3 local = transform.InverseTransformPoint(origin + direction * distance);
+            point = default;
+            return false;
+        }
+
+        /// <summary>몬스터 평면 위의 점이 이미지 사각형 안에 있는지.</summary>
+        public bool Contains(Vector3 pointOnPlane)
+        {
+            Vector3 local = transform.InverseTransformPoint(pointOnPlane);
             Bounds b = _renderer.sprite.bounds;
             return local.x >= b.min.x && local.x <= b.max.x && local.y >= b.min.y && local.y <= b.max.y;
         }

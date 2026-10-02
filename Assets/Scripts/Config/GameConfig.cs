@@ -18,10 +18,10 @@ namespace BeOdysseus
 
         [Header("몬스터 활동 범위")]
         [Tooltip("정면에서 좌우 한쪽으로 몇 도까지인지.")]
-        [SerializeField, Range(1f, 60f)] private float _areaHalfWidthDegrees = 20f;
+        [SerializeField, Range(1f, 60f)] private float _areaHalfWidthDegrees = 26f;
 
         [Tooltip("정면에서 위아래 한쪽으로 몇 도까지인지.")]
-        [SerializeField, Range(1f, 45f)] private float _areaHalfHeightDegrees = 10f;
+        [SerializeField, Range(1f, 45f)] private float _areaHalfHeightDegrees = 13f;
 
         [Tooltip("몬스터가 떠 있는 가상의 거리(m). 화면에 보이는 크기와 움직일 때의 원근감에 영향을 준다.")]
         [SerializeField, Min(0.5f)] private float _areaDistanceMeters = 3f;
