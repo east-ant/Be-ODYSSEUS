@@ -36,6 +36,7 @@ namespace BeOdysseus.Dev
 
         private void OnGUI()
         {
+            if (_game != null && _game.IsOnMainMenu) return;
             _style ??= new GUIStyle(GUI.skin.label) { fontSize = _fontSize, normal = { textColor = _textColor } };
 
             _text.Clear();
