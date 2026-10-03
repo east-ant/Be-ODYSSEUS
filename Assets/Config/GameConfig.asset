@@ -19,9 +19,11 @@ MonoBehaviour:
   _areaDistanceMeters: 3
   _monsterHeightMeters: 0.5
   _monsterMoveSpeedDegrees: 6
-  _monsterPauseMinSeconds: 0.5
-  _monsterPauseMaxSeconds: 1.5
-  _arrowsPerStage: 2
+  _monsterRestSeconds: 1.5
+  _monsterRestIntervalMinSeconds: 3
+  _monsterRestIntervalMaxSeconds: 6
+  _monsterDeathSeconds: 1.4
+  _arrowsPerStage: 3
   _stageTimeLimitSeconds: 60
   _resultDelaySeconds: 1
   _resultCountdownSeconds: 5

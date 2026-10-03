@@ -23,7 +23,7 @@ MonoBehaviour:
   - {fileID: -931252481, guid: 2fe4ed8e6f2a07c4aa11a3d2609e341d, type: 3}
   - {fileID: -857629584, guid: 2fe4ed8e6f2a07c4aa11a3d2609e341d, type: 3}
   - {fileID: -270462258, guid: 2fe4ed8e6f2a07c4aa11a3d2609e341d, type: 3}
-  _walkFramesPerSecond: 8
+  _walkFramesPerSecond: 6
   _walkFacesRight: 1
   _deathFrames: []
   _deathFramesPerSecond: 10

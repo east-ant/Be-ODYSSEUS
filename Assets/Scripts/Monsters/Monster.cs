@@ -4,8 +4,9 @@ namespace BeOdysseus
 {
     /// <summary>
     /// 2D 이미지 몬스터. 항상 플레이어 쪽을 바라보고(빌보드), 몬스터 종류에 따라 활동 범위 안을 움직인다.
-    /// - Walk: 가운데 줄을 따라 좌우로 걷고, 좌우 끝에서 잠시(설정값) 대기 애니메이션 후 방향을 바꾼다.
-    /// - Float: 좌우로 떠다니면서 위아래로도 오르내린다. 끝에서 멈추지 않는다.
+    /// - Walk: 가운데 줄을 따라 좌우로 걷다가 아무 데서나 멈춰 잠시 대기 애니메이션을 하고, 다시 아무 방향으로 걷는다.
+    ///   한 번 멈춘 뒤에는 최소 몇 초(설정값) 동안 다시 멈추지 않는다. 좌우 끝에 닿으면 멈추지 않고 돌아선다.
+    /// - Float: 좌우로 떠다니면서 위아래로도 오르내린다. 멈추지 않는다.
     /// 맞으면 체력이 1 줄어든다. 체력이 남아 있으면 잠깐 번쩍이며 움찔하고(멈춤 + 흔들림),
     /// 0이 되면 번쩍인 뒤 (쓰러지는 그림이 있으면 먼저 재생하고) 옆으로 쓰러지고, 누운 채 서서히 사라진다.
     /// 위치는 활동 범위 기준 각도로 들고 있다.
@@ -44,6 +45,7 @@ namespace BeOdysseus
         private int _direction;
         private Motion _motion;
         private float _restLeft;
+        private float _walkLeftBeforeRest;
         private float _frameTime;
         private float _deathTime;
         private float _fallSign;
@@ -240,7 +242,7 @@ namespace BeOdysseus
             {
                 _restLeft -= dt;
                 if (_restLeft > 0f) return;
-                _direction = -_direction;
+                _direction = Random.value < 0.5f ? -1 : 1; // 쉬고 나면 아무 방향으로나 다시 걷는다
                 StartWalking();
                 return;
             }
@@ -253,11 +255,16 @@ namespace BeOdysseus
 
             float limit = HorizontalLimitDegrees();
             _angleX += _direction * _config.MonsterMoveSpeedDegrees * dt;
-            if (Mathf.Abs(_angleX) < limit) return;
+            if (Mathf.Abs(_angleX) >= limit)
+            {
+                // 좌우 끝에 닿으면 멈추지 않고 바로 돌아선다.
+                _angleX = Mathf.Clamp(_angleX, -limit, limit);
+                _direction = _angleX > 0f ? -1 : 1;
+            }
 
-            _angleX = Mathf.Clamp(_angleX, -limit, limit);
-            if (IsFloating) _direction = -_direction; // 떠다니는 몬스터는 끝에서 멈추지 않고 바로 돌아선다
-            else StartResting();
+            if (IsFloating) return;
+            _walkLeftBeforeRest -= dt;
+            if (_walkLeftBeforeRest <= 0f) StartResting();
         }
 
         private float FloatAngleY() => VerticalLimitDegrees() * _animation.FloatHeight01 * Mathf.Sin(_floatPhase);
@@ -266,12 +273,14 @@ namespace BeOdysseus
         {
             _motion = Motion.Walking;
             _frameTime = 0f;
+            // 다음에 멈출 때까지 걸을 시간. 최소값이 있어서 멈춘 직후 바로 또 멈추지는 않는다.
+            _walkLeftBeforeRest = Random.Range(_config.MonsterRestIntervalMinSeconds, _config.MonsterRestIntervalMaxSeconds);
         }
 
         private void StartResting()
         {
             _motion = Motion.Resting;
-            _restLeft = _config.MonsterEdgeRestSeconds;
+            _restLeft = _config.MonsterRestSeconds;
             _frameTime = 0f;
         }
 
