@@ -44,13 +44,6 @@ namespace BeOdysseus
             return _front.position + _front.rotation * offset * Vector3.forward * DistanceMeters;
         }
 
-        /// <summary>범위 안의 무작위 각도. margin만큼 테두리에서 안쪽으로 들어온다.</summary>
-        public Vector2 RandomAngles(Vector2 margin)
-        {
-            Vector2 half = Vector2.Max(HalfSizeDegrees - margin, Vector2.zero);
-            return new Vector2(Random.Range(-half.x, half.x), Random.Range(-half.y, half.y));
-        }
-
         private void DrawFrame()
         {
             Vector2 h = HalfSizeDegrees;

@@ -175,7 +175,7 @@ namespace BeOdysseus
         private void BeginStage()
         {
             _stageRun = new StageRun(_stageIndex + 1, _config.ArrowsPerStage, _config.StageTimeLimitSeconds);
-            ShowMonster(CurrentStage.MonsterSprite);
+            ShowMonster(CurrentStage);
             _shotJudge.IsArmed = true;
             _stageHud.Show(_stageRun);
             _phase = Phase.Playing;
@@ -232,11 +232,11 @@ namespace BeOdysseus
             BeginStage();
         }
 
-        private void ShowMonster(Sprite sprite)
+        private void ShowMonster(StageDefinition stage)
         {
             if (_monster == null) _monster = Instantiate(_monsterPrefab);
             _monster.gameObject.SetActive(true);
-            _monster.Init(_playArea, _viewer, sprite, randomPosition: true);
+            _monster.Init(_playArea, _viewer, stage.MonsterSprite, stage.MonsterAnimation);
             _shotJudge.Target = _monster;
         }
 

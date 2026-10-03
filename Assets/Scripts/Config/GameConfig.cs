@@ -30,14 +30,11 @@ namespace BeOdysseus
         [Tooltip("몬스터 키(m). 활동 범위 거리와 함께 화면에서 보이는 크기를 정한다.")]
         [SerializeField, Min(0.05f)] private float _monsterHeightMeters = 0.5f;
 
-        [Tooltip("몬스터가 범위 안을 움직이는 속도(도/초).")]
+        [Tooltip("몬스터가 좌우로 걷는 속도(도/초).")]
         [SerializeField, Min(0f)] private float _monsterMoveSpeedDegrees = 6f;
 
-        [Tooltip("목표 지점에 도착한 뒤 멈춰 있는 시간(초)의 최소값.")]
-        [SerializeField, Min(0f)] private float _monsterPauseMinSeconds = 0.5f;
-
-        [Tooltip("목표 지점에 도착한 뒤 멈춰 있는 시간(초)의 최대값.")]
-        [SerializeField, Min(0f)] private float _monsterPauseMaxSeconds = 1.5f;
+        [Tooltip("몬스터가 범위 좌우 끝에 닿았을 때 대기 애니메이션을 하며 멈춰 있는 시간(초).")]
+        [SerializeField, Min(0f)] private float _monsterEdgeRestSeconds = 1.5f;
 
         [Header("스테이지")]
         [Tooltip("한 스테이지에서 쏠 수 있는 화살 수. 이 안에 몬스터를 맞히면 클리어.")]
@@ -84,8 +81,7 @@ namespace BeOdysseus
         public float AreaDistanceMeters => _areaDistanceMeters;
         public float MonsterHeightMeters => _monsterHeightMeters;
         public float MonsterMoveSpeedDegrees => _monsterMoveSpeedDegrees;
-        public float MonsterPauseMinSeconds => _monsterPauseMinSeconds;
-        public float MonsterPauseMaxSeconds => Mathf.Max(_monsterPauseMinSeconds, _monsterPauseMaxSeconds);
+        public float MonsterEdgeRestSeconds => _monsterEdgeRestSeconds;
         public int ArrowsPerStage => _arrowsPerStage;
         public float StageTimeLimitSeconds => _stageTimeLimitSeconds;
         public float ResultDelaySeconds => _resultDelaySeconds;
