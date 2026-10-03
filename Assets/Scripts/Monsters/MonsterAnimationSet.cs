@@ -4,7 +4,7 @@ namespace BeOdysseus
 {
     public enum MonsterMovement
     {
-        /// <summary>활동 범위 가운데 줄을 따라 좌우로 걷고, 좌우 끝에서 잠시 대기 애니메이션.</summary>
+        /// <summary>활동 범위 가운데 줄을 따라 좌우로 걷다가, 아무 데서나 잠시 멈춰 대기 애니메이션.</summary>
         Walk,
         /// <summary>좌우로 떠다니면서 위아래로도 오르내린다. 끝에서 멈추지 않고 바로 방향을 바꾼다.</summary>
         Float,
@@ -58,9 +58,15 @@ namespace BeOdysseus
         public float FloatCycleSeconds => _floatCycleSeconds;
         public float FloatHeight01 => _floatHeight01;
 
+        private bool HasIdleFrames => _idleFrames != null && _idleFrames.Length > 0;
+
+        /// <summary>제자리에서 보여 줄 프레임(결과 화면 등). 대기 그림이 없으면 걷기(떠다니기) 그림을 쓴다.</summary>
+        public Sprite[] StandingFrames => HasIdleFrames ? _idleFrames : _walkFrames;
+        public float StandingFramesPerSecond => HasIdleFrames ? _idleFramesPerSecond : _walkFramesPerSecond;
+
         /// <summary>크기를 정할 때 기준으로 삼는 그림(대기 첫 프레임, 없으면 걷기 첫 프레임).</summary>
         public Sprite ReferenceFrame =>
-            _idleFrames != null && _idleFrames.Length > 0 ? _idleFrames[0]
+            HasIdleFrames ? _idleFrames[0]
             : _walkFrames != null && _walkFrames.Length > 0 ? _walkFrames[0] : null;
     }
 }
