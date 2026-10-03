@@ -5,12 +5,16 @@ using UnityEngine.InputSystem.XR;
 namespace BeOdysseus
 {
     /// <summary>
-    /// 에디터 전용 조준 흉내. 에디터에는 AR이 없으니 마우스 오른쪽 버튼을 누른 채 움직여 카메라(= 활) 방향을 돌린다.
+    /// 에디터 전용 조준 흉내. 에디터에는 AR이 없으니 카메라(= 활) 방향을 직접 돌린다.
+    /// - 키보드 방향키: 누르고 있는 동안 그 방향으로 돌아간다.
+    /// - 마우스 오른쪽 버튼을 누른 채 움직이기.
     /// 폰 빌드에서는 스스로 꺼지고, 게임 코드는 어느 쪽이든 카메라 방향만 읽는다.
     /// </summary>
     public class EditorAimSimulator : MonoBehaviour
     {
         [SerializeField] private float _degreesPerPixel = 0.1f;
+        [Tooltip("방향키를 누르고 있을 때 도는 속도(도/초).")]
+        [SerializeField] private float _keyDegreesPerSecond = 20f;
         [SerializeField] private float _maxPitchDegrees = 80f;
 
         private float _yaw;
@@ -38,13 +42,33 @@ namespace BeOdysseus
 
         private void Update()
         {
-            Mouse mouse = Mouse.current;
-            if (mouse == null || !mouse.rightButton.isPressed) return;
+            // 오른쪽·위쪽이 + 인 회전량(도).
+            Vector2 turn = KeyTurn() * (_keyDegreesPerSecond * Time.deltaTime) + MouseTurn();
+            if (turn == Vector2.zero) return;
 
-            Vector2 delta = mouse.delta.ReadValue();
-            _yaw += delta.x * _degreesPerPixel;
-            _pitch = Mathf.Clamp(_pitch - delta.y * _degreesPerPixel, -_maxPitchDegrees, _maxPitchDegrees);
+            _yaw += turn.x;
+            _pitch = Mathf.Clamp(_pitch - turn.y, -_maxPitchDegrees, _maxPitchDegrees);
             transform.rotation = Quaternion.Euler(_pitch, _yaw, 0f);
+        }
+
+        private static Vector2 KeyTurn()
+        {
+            Keyboard keyboard = Keyboard.current;
+            if (keyboard == null) return Vector2.zero;
+
+            var turn = Vector2.zero;
+            if (keyboard.leftArrowKey.isPressed) turn.x -= 1f;
+            if (keyboard.rightArrowKey.isPressed) turn.x += 1f;
+            if (keyboard.downArrowKey.isPressed) turn.y -= 1f;
+            if (keyboard.upArrowKey.isPressed) turn.y += 1f;
+            return turn;
+        }
+
+        private Vector2 MouseTurn()
+        {
+            Mouse mouse = Mouse.current;
+            if (mouse == null || !mouse.rightButton.isPressed) return Vector2.zero;
+            return mouse.delta.ReadValue() * _degreesPerPixel;
         }
     }
 }
