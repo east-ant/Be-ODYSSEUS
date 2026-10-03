@@ -3,9 +3,10 @@ using UnityEngine;
 namespace BeOdysseus
 {
     /// <summary>
-    /// 2D 이미지 몬스터. 항상 플레이어 쪽을 바라보고(빌보드), 활동 범위의 가운데 줄을 따라 좌우로만 걷는다.
-    /// 좌우 끝에 닿으면 잠시(설정값) 멈춰 대기 애니메이션을 보여 준 뒤 방향을 바꾼다.
-    /// 명중하면 번쩍인 뒤 옆으로 쓰러지고, 누운 채 서서히 사라진다.
+    /// 2D 이미지 몬스터. 항상 플레이어 쪽을 바라보고(빌보드), 몬스터 종류에 따라 활동 범위 안을 움직인다.
+    /// - Walk: 가운데 줄을 따라 좌우로 걷고, 좌우 끝에서 잠시(설정값) 대기 애니메이션 후 방향을 바꾼다.
+    /// - Float: 좌우로 떠다니면서 위아래로도 오르내린다. 끝에서 멈추지 않는다.
+    /// 명중하면 번쩍인 뒤 (쓰러지는 그림이 있으면 먼저 재생하고) 옆으로 쓰러지고, 누운 채 서서히 사라진다.
     /// 위치는 활동 범위 기준 각도로 들고 있다.
     /// </summary>
     [RequireComponent(typeof(SpriteRenderer))]
@@ -13,7 +14,7 @@ namespace BeOdysseus
     {
         private enum Motion { Walking, Resting, Dying, Dead }
 
-        // 쓰러지는 동안의 구간(전체 시간 대비 비율): 맞은 순간 번쩍 → 옆으로 넘어짐 → 누운 채 사라짐
+        // 쓰러지는 동안의 구간(쓰러지는 시간 대비 비율): 맞은 순간 번쩍 → 옆으로 넘어짐 → 누운 채 사라짐
         private const float FlashEnd = 0.12f;
         private const float FallEnd = 0.6f;
         // 다 넘어졌을 때 기운 각도(도). 90도면 완전히 누운 모습.
@@ -31,6 +32,8 @@ namespace BeOdysseus
         private Sprite _referenceSprite;
         private float _verticalOffsetMeters;
         private float _angleX;
+        private float _angleY;
+        private float _floatPhase;
         private int _direction;
         private Motion _motion;
         private float _restLeft;
@@ -39,11 +42,14 @@ namespace BeOdysseus
         private float _fallSign;
         private float _fallAngle;
 
-        /// <summary>정면 기준 현재 각도(x: 오른쪽 +, y: 위쪽 +). 가운데 줄을 걸으므로 y는 늘 0.</summary>
-        public Vector2 Angles => new(_angleX, 0f);
+        /// <summary>정면 기준 현재 각도(x: 오른쪽 +, y: 위쪽 +).</summary>
+        public Vector2 Angles => new(_angleX, _angleY);
 
         /// <summary>명중해서 쓰러지는 중인지. 다 쓰러져 사라지면 false.</summary>
         public bool IsDying => _motion == Motion.Dying;
+
+        private bool IsFloating => _animation != null && _animation.Movement == MonsterMovement.Float;
+        private bool HasDeathFrames => _animation != null && _animation.HasDeathFrames;
 
         /// <summary>정확도 계산 기준점의 월드 위치.</summary>
         public Vector3 TargetPoint
@@ -86,8 +92,8 @@ namespace BeOdysseus
         }
 
         /// <summary>
-        /// 활동 범위의 가운데 줄 아무 곳에 몬스터를 세우고 걷기 시작한다.
-        /// animation이 있으면 대기·걷기 애니메이션을, 없으면 staticSprite 한 장을 쓴다.
+        /// 활동 범위 아무 곳에 몬스터를 세우고 움직이기 시작한다.
+        /// animation이 있으면 그 애니메이션과 이동 방식을, 없으면 staticSprite 한 장으로 걷는다.
         /// </summary>
         public void Init(PlayArea area, Transform viewer, Sprite staticSprite, MonsterAnimationSet animation)
         {
@@ -104,11 +110,13 @@ namespace BeOdysseus
             Bounds reference = _referenceSprite.bounds;
             float scale = _config.MonsterHeightMeters / reference.size.y;
             transform.localScale = Vector3.one * scale;
-            // 그림의 기준점이 발밑이든 가운데든, 몸 가운데가 범위의 가운데 줄에 오게 맞춘다.
+            // 그림의 기준점이 발밑이든 가운데든, 몸 가운데가 정해진 높이에 오게 맞춘다.
             _verticalOffsetMeters = -reference.center.y * scale;
 
             float limit = HorizontalLimitDegrees();
             _angleX = Random.Range(-limit, limit);
+            _floatPhase = Random.Range(0f, 2f * Mathf.PI);
+            _angleY = IsFloating ? FloatAngleY() : 0f;
             _direction = Random.value < 0.5f ? -1 : 1;
             StartWalking();
             UpdatePose();
@@ -121,6 +129,7 @@ namespace BeOdysseus
             Vector3 local = transform.InverseTransformPoint(hitPoint);
             // 기울기 각도가 +면 화면에서 왼쪽으로, -면 오른쪽으로 넘어진다.
             _fallSign = local.x <= 0f ? -1f : 1f;
+            if (HasDeathFrames) _renderer.flipX = false; // 쓰러지는 그림은 그려진 방향 그대로 보여 준다
             _motion = Motion.Dying;
             _deathTime = 0f;
         }
@@ -141,30 +150,35 @@ namespace BeOdysseus
             if (gameObject.activeSelf) UpdatePose();
         }
 
+        /// <summary>
+        /// 쓰러지는 순서: [쓰러지는 그림 재생(없으면 짧게 번쩍)] → [발밑을 축으로 옆으로 넘어짐] → [누운 채 사라짐].
+        /// 맞은 직후 잠깐은 빨갛게 번쩍인다.
+        /// </summary>
         private void TickDeath(float dt)
         {
             _deathTime += dt;
-            float t = Mathf.Clamp01(_deathTime / _config.MonsterDeathSeconds);
-            float fall = Mathf.InverseLerp(FlashEnd, FallEnd, t);
+            float total = _config.MonsterDeathSeconds;
+            float flashSeconds = FlashEnd * total;
+            float fallSeconds = (FallEnd - FlashEnd) * total;
+            float fadeSeconds = (1f - FallEnd) * total;
+            float motionSeconds = flashSeconds;
 
-            if (_animation != null && _animation.HasDeathFrames)
+            if (HasDeathFrames)
             {
-                // 쓰러지는 그림이 있으면 그대로 재생하고 마지막 프레임에서 멈춘다.
                 Sprite[] frames = _animation.DeathFrames;
-                int index = Mathf.Min((int)(Mathf.Max(0f, _deathTime - FlashEnd * _config.MonsterDeathSeconds) * _animation.DeathFramesPerSecond), frames.Length - 1);
-                _renderer.sprite = frames[index];
-            }
-            else
-            {
-                // 없으면 발밑을 축으로 옆으로 넘어뜨린다. 처음엔 천천히, 갈수록 빨리(떨어지는 느낌).
-                _fallAngle = _fallSign * FallenAngle * fall * fall;
+                motionSeconds = frames.Length / _animation.DeathFramesPerSecond;
+                _renderer.sprite = frames[Mathf.Min((int)(_deathTime * _animation.DeathFramesPerSecond), frames.Length - 1)];
             }
 
-            Color color = t < FlashEnd ? HitTint : Color.white;
-            color.a = 1f - Mathf.InverseLerp(FallEnd, 1f, t);
+            // 처음엔 천천히, 갈수록 빨리 넘어진다(떨어지는 느낌).
+            float fall = Mathf.Clamp01((_deathTime - motionSeconds) / fallSeconds);
+            _fallAngle = _fallSign * FallenAngle * fall * fall;
+
+            Color color = _deathTime < flashSeconds ? HitTint : Color.white;
+            color.a = 1f - Mathf.Clamp01((_deathTime - motionSeconds - fallSeconds) / fadeSeconds);
             _renderer.color = color;
 
-            if (t < 1f) return;
+            if (_deathTime < motionSeconds + fallSeconds + fadeSeconds) return;
             _motion = Motion.Dead;
             gameObject.SetActive(false);
         }
@@ -180,13 +194,22 @@ namespace BeOdysseus
                 return;
             }
 
+            if (IsFloating)
+            {
+                _floatPhase += dt * 2f * Mathf.PI / _animation.FloatCycleSeconds;
+                _angleY = FloatAngleY();
+            }
+
             float limit = HorizontalLimitDegrees();
             _angleX += _direction * _config.MonsterMoveSpeedDegrees * dt;
             if (Mathf.Abs(_angleX) < limit) return;
 
             _angleX = Mathf.Clamp(_angleX, -limit, limit);
-            StartResting();
+            if (IsFloating) _direction = -_direction; // 떠다니는 몬스터는 끝에서 멈추지 않고 바로 돌아선다
+            else StartResting();
         }
+
+        private float FloatAngleY() => VerticalLimitDegrees() * _animation.FloatHeight01 * Mathf.Sin(_floatPhase);
 
         private void StartWalking()
         {
@@ -206,13 +229,13 @@ namespace BeOdysseus
             if (_animation == null) return;
 
             bool walking = _motion == Motion.Walking;
-            Sprite[] frames = walking ? _animation.WalkFrames : _animation.IdleFrames;
+            Sprite[] frames = walking && _animation.WalkFrames is { Length: > 0 } ? _animation.WalkFrames : _animation.IdleFrames;
             if (frames == null || frames.Length == 0) return;
 
             _frameTime += dt;
-            float fps = walking ? _animation.WalkFramesPerSecond : _animation.IdleFramesPerSecond;
+            float fps = frames == _animation.WalkFrames ? _animation.WalkFramesPerSecond : _animation.IdleFramesPerSecond;
             _renderer.sprite = frames[(int)(_frameTime * fps) % frames.Length];
-            // 걷는 그림의 방향과 실제로 가는 방향이 다르면 좌우를 뒤집는다. 대기 중에는 그대로.
+            // 가는 방향과 그림의 방향이 다르면 좌우를 뒤집는다. 대기 중에는 그대로.
             _renderer.flipX = walking && (_direction < 0) == _animation.WalkFacesRight;
         }
 
@@ -227,12 +250,20 @@ namespace BeOdysseus
                 transform.rotation = Quaternion.LookRotation(away, Vector3.up) * Quaternion.Euler(0f, 0f, _fallAngle);
         }
 
-        /// <summary>몬스터가 범위 밖으로 삐져나가지 않고 걸을 수 있는 좌우 최대 각도.</summary>
+        /// <summary>몬스터가 범위 밖으로 삐져나가지 않고 움직일 수 있는 좌우 최대 각도.</summary>
         private float HorizontalLimitDegrees()
         {
             float halfWidthMeters = _referenceSprite.bounds.extents.x * transform.localScale.x;
-            float margin = Mathf.Atan2(halfWidthMeters, _area.DistanceMeters) * Mathf.Rad2Deg;
-            return Mathf.Max(0f, _area.HalfSizeDegrees.x - margin);
+            return Mathf.Max(0f, _area.HalfSizeDegrees.x - MetersToDegrees(halfWidthMeters));
         }
+
+        /// <summary>몬스터가 범위 밖으로 삐져나가지 않고 움직일 수 있는 위아래 최대 각도.</summary>
+        private float VerticalLimitDegrees()
+        {
+            float halfHeightMeters = _referenceSprite.bounds.extents.y * transform.localScale.y;
+            return Mathf.Max(0f, _area.HalfSizeDegrees.y - MetersToDegrees(halfHeightMeters));
+        }
+
+        private float MetersToDegrees(float meters) => Mathf.Atan2(meters, _area.DistanceMeters) * Mathf.Rad2Deg;
     }
 }

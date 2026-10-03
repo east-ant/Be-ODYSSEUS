@@ -31,3 +31,14 @@ MonoBehaviour:
   - {fileID: 813895141, guid: 90981a1ed898d1d47b89b250ef0820e7, type: 3}
   _walkFramesPerSecond: 10
   _walkFacesRight: 1
+  _deathFrames:
+  - {fileID: 909378565, guid: 77ee71a07c0845a48a71ed75814444b2, type: 3}
+  - {fileID: -1452820019, guid: 77ee71a07c0845a48a71ed75814444b2, type: 3}
+  - {fileID: -499162630, guid: 77ee71a07c0845a48a71ed75814444b2, type: 3}
+  - {fileID: 235208666, guid: 77ee71a07c0845a48a71ed75814444b2, type: 3}
+  - {fileID: -2139931621, guid: 77ee71a07c0845a48a71ed75814444b2, type: 3}
+  - {fileID: 701759776, guid: 77ee71a07c0845a48a71ed75814444b2, type: 3}
+  _deathFramesPerSecond: 10
+  _movement: 0
+  _floatCycleSeconds: 3
+  _floatHeight01: 1
