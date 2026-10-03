@@ -36,6 +36,9 @@ namespace BeOdysseus
         [Tooltip("몬스터가 범위 좌우 끝에 닿았을 때 대기 애니메이션을 하며 멈춰 있는 시간(초).")]
         [SerializeField, Min(0f)] private float _monsterEdgeRestSeconds = 1.5f;
 
+        [Tooltip("명중한 몬스터가 쓰러져 사라지기까지 걸리는 시간(초). 번쩍 → 넘어짐 → 누운 채 사라짐.")]
+        [SerializeField, Min(0.1f)] private float _monsterDeathSeconds = 1.4f;
+
         [Header("스테이지")]
         [Tooltip("한 스테이지에서 쏠 수 있는 화살 수. 이 안에 몬스터를 맞히면 클리어.")]
         [SerializeField, Min(1)] private int _arrowsPerStage = 2;
@@ -43,7 +46,7 @@ namespace BeOdysseus
         [Tooltip("한 스테이지 제한 시간(초). 다 되면 실패로 끝난다.")]
         [SerializeField, Min(1f)] private float _stageTimeLimitSeconds = 60f;
 
-        [Tooltip("스테이지가 끝난 뒤 결과 화면을 띄우기까지 기다리는 시간(초). 마지막 발의 결과를 눈으로 볼 수 있게 한다.")]
+        [Tooltip("스테이지가 끝난 뒤(몬스터를 맞혔으면 다 쓰러진 뒤) 결과 화면을 띄우기까지 기다리는 시간(초).")]
         [SerializeField, Min(0f)] private float _resultDelaySeconds = 1f;
 
         [Tooltip("결과 화면에서 다음 스테이지로 넘어가기까지 세는 시간(초).")]
@@ -82,6 +85,7 @@ namespace BeOdysseus
         public float MonsterHeightMeters => _monsterHeightMeters;
         public float MonsterMoveSpeedDegrees => _monsterMoveSpeedDegrees;
         public float MonsterEdgeRestSeconds => _monsterEdgeRestSeconds;
+        public float MonsterDeathSeconds => _monsterDeathSeconds;
         public int ArrowsPerStage => _arrowsPerStage;
         public float StageTimeLimitSeconds => _stageTimeLimitSeconds;
         public float ResultDelaySeconds => _resultDelaySeconds;

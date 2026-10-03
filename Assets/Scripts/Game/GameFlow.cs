@@ -133,6 +133,8 @@ namespace BeOdysseus
                     break;
 
                 case Phase.StageEnding:
+                    // 몬스터가 쓰러지는 중이면 다 쓰러질 때까지 기다렸다가 결과로 넘어간다.
+                    if (_monster != null && _monster.IsDying) break;
                     _resultDelayLeft -= Time.deltaTime;
                     if (_resultDelayLeft <= 0f) ShowResult();
                     break;
@@ -191,7 +193,7 @@ namespace BeOdysseus
             if (result.Hit)
             {
                 Score++;
-                HideMonster();
+                _monster.Die(result.ImpactPoint);
             }
             if (_stageRun.IsOver) EndStage();
         }
