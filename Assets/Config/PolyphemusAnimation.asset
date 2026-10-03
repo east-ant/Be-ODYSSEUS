@@ -31,14 +31,25 @@ MonoBehaviour:
   - {fileID: 813895141, guid: 90981a1ed898d1d47b89b250ef0820e7, type: 3}
   _walkFramesPerSecond: 10
   _walkFacesRight: 1
+  _hitFrames:
+  - {fileID: -1281194814, guid: 2c5bd8ab555018547a282b7e4ece82ed, type: 3}
+  - {fileID: -800702543, guid: 2c5bd8ab555018547a282b7e4ece82ed, type: 3}
+  - {fileID: -1447725356, guid: 2c5bd8ab555018547a282b7e4ece82ed, type: 3}
+  - {fileID: -2045490538, guid: 2c5bd8ab555018547a282b7e4ece82ed, type: 3}
+  - {fileID: -1102478930, guid: 2c5bd8ab555018547a282b7e4ece82ed, type: 3}
+  - {fileID: -637737516, guid: 2c5bd8ab555018547a282b7e4ece82ed, type: 3}
+  _hitFramesPerSecond: 12
   _deathFrames:
-  - {fileID: 909378565, guid: 77ee71a07c0845a48a71ed75814444b2, type: 3}
-  - {fileID: -1452820019, guid: 77ee71a07c0845a48a71ed75814444b2, type: 3}
-  - {fileID: -499162630, guid: 77ee71a07c0845a48a71ed75814444b2, type: 3}
-  - {fileID: 235208666, guid: 77ee71a07c0845a48a71ed75814444b2, type: 3}
-  - {fileID: -2139931621, guid: 77ee71a07c0845a48a71ed75814444b2, type: 3}
-  - {fileID: 701759776, guid: 77ee71a07c0845a48a71ed75814444b2, type: 3}
-  _deathFramesPerSecond: 10
+  - {fileID: -177555382, guid: 5e1e91c7321c1f7498d3ab846dd10259, type: 3}
+  - {fileID: -1165561883, guid: 5e1e91c7321c1f7498d3ab846dd10259, type: 3}
+  - {fileID: -1389064450, guid: 5e1e91c7321c1f7498d3ab846dd10259, type: 3}
+  - {fileID: 2012251902, guid: 5e1e91c7321c1f7498d3ab846dd10259, type: 3}
+  - {fileID: 676384085, guid: 5e1e91c7321c1f7498d3ab846dd10259, type: 3}
+  - {fileID: -1360198374, guid: 5e1e91c7321c1f7498d3ab846dd10259, type: 3}
+  - {fileID: -1105700483, guid: 5e1e91c7321c1f7498d3ab846dd10259, type: 3}
+  - {fileID: -1599941502, guid: 5e1e91c7321c1f7498d3ab846dd10259, type: 3}
+  _deathFramesPerSecond: 8
+  _deathFramesShowFall: 1
   _health: 2
   _movement: 0
   _floatCycleSeconds: 3

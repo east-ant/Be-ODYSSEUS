@@ -25,8 +25,25 @@ MonoBehaviour:
   - {fileID: -270462258, guid: 2fe4ed8e6f2a07c4aa11a3d2609e341d, type: 3}
   _walkFramesPerSecond: 6
   _walkFacesRight: 1
-  _deathFrames: []
-  _deathFramesPerSecond: 10
+  _hitFrames:
+  - {fileID: 166581421, guid: 32e94c74e4729b142bd6fb06f6a9f4f7, type: 3}
+  - {fileID: 1979259900, guid: 32e94c74e4729b142bd6fb06f6a9f4f7, type: 3}
+  - {fileID: -600723787, guid: 32e94c74e4729b142bd6fb06f6a9f4f7, type: 3}
+  - {fileID: -1904406733, guid: 32e94c74e4729b142bd6fb06f6a9f4f7, type: 3}
+  - {fileID: 802997959, guid: 32e94c74e4729b142bd6fb06f6a9f4f7, type: 3}
+  - {fileID: -2083950542, guid: 32e94c74e4729b142bd6fb06f6a9f4f7, type: 3}
+  _hitFramesPerSecond: 12
+  _deathFrames:
+  - {fileID: -1741776935, guid: a38778196be2d6b469f38b1322285ae7, type: 3}
+  - {fileID: -1950625557, guid: a38778196be2d6b469f38b1322285ae7, type: 3}
+  - {fileID: -1012447414, guid: a38778196be2d6b469f38b1322285ae7, type: 3}
+  - {fileID: 1734953480, guid: a38778196be2d6b469f38b1322285ae7, type: 3}
+  - {fileID: 487047922, guid: a38778196be2d6b469f38b1322285ae7, type: 3}
+  - {fileID: 1975103477, guid: a38778196be2d6b469f38b1322285ae7, type: 3}
+  - {fileID: -1667257051, guid: a38778196be2d6b469f38b1322285ae7, type: 3}
+  - {fileID: 1895350348, guid: a38778196be2d6b469f38b1322285ae7, type: 3}
+  _deathFramesPerSecond: 8
+  _deathFramesShowFall: 1
   _health: 2
   _movement: 1
   _floatCycleSeconds: 3

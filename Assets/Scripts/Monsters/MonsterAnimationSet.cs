@@ -11,7 +11,7 @@ namespace BeOdysseus
     }
 
     /// <summary>
-    /// 몬스터 한 종류의 그림과 움직이는 방식: 대기·걷기(또는 떠다니기)·쓰러지기 프레임, 재생 속도, 이동 방식.
+    /// 몬스터 한 종류의 그림과 움직이는 방식: 대기·걷기(또는 떠다니기)·맞기·쓰러지기 프레임, 재생 속도, 이동 방식.
     /// 프레임 그림은 발밑을 기준점(pivot)으로 잘라 두어, 프레임이 바뀌어도 발 위치가 흔들리지 않는다.
     /// </summary>
     [CreateAssetMenu(fileName = "MonsterAnimation", menuName = "Be ODYSSEUS/Monster Animation")]
@@ -29,10 +29,18 @@ namespace BeOdysseus
         [Tooltip("걷기 그림이 오른쪽으로 가는 모습이면 체크. 왼쪽으로 갈 때 좌우를 뒤집는다.")]
         [SerializeField] private bool _walkFacesRight = true;
 
-        [Tooltip("쓰러지는 그림(선택). 있으면 먼저 한 번 재생한 뒤 옆으로 넘어뜨리고, 없으면 바로 넘어뜨린다.")]
+        [Tooltip("맞았지만 아직 쓰러지지 않을 때 한 번 재생하는 그림(선택). 없으면 쓰러지는 그림 한 장으로 잠깐 움찔한다.")]
+        [SerializeField] private Sprite[] _hitFrames;
+        [Tooltip("맞는 애니메이션 초당 프레임 수.")]
+        [SerializeField, Min(0.1f)] private float _hitFramesPerSecond = 12f;
+
+        [Tooltip("쓰러지는 그림(선택). 있으면 먼저 한 번 재생한다. 없으면 바로 옆으로 넘어뜨린다.")]
         [SerializeField] private Sprite[] _deathFrames;
         [Tooltip("쓰러지는 애니메이션 초당 프레임 수.")]
         [SerializeField, Min(0.1f)] private float _deathFramesPerSecond = 10f;
+        [Tooltip("쓰러지는 그림에 끝(누운 모습, 흩어져 사라지는 모습)까지 그려져 있으면 체크. " +
+                 "그림을 다 튼 뒤 옆으로 넘어뜨리지 않고, 마지막 그림으로 잠시 있다가 사라진다.")]
+        [SerializeField] private bool _deathFramesShowFall;
 
         [Header("능력치")]
         [Tooltip("체력: 몇 번 맞혀야 쓰러지는지.")]
@@ -50,9 +58,13 @@ namespace BeOdysseus
         public Sprite[] WalkFrames => _walkFrames;
         public float WalkFramesPerSecond => _walkFramesPerSecond;
         public bool WalkFacesRight => _walkFacesRight;
+        public Sprite[] HitFrames => _hitFrames;
+        public float HitFramesPerSecond => _hitFramesPerSecond;
+        public bool HasHitFrames => _hitFrames != null && _hitFrames.Length > 0;
         public Sprite[] DeathFrames => _deathFrames;
         public float DeathFramesPerSecond => _deathFramesPerSecond;
         public bool HasDeathFrames => _deathFrames != null && _deathFrames.Length > 0;
+        public bool DeathFramesShowFall => _deathFramesShowFall;
         public int Health => _health;
         public MonsterMovement Movement => _movement;
         public float FloatCycleSeconds => _floatCycleSeconds;

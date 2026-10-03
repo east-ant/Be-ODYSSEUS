@@ -7,8 +7,9 @@ namespace BeOdysseus
     /// - Walk: 가운데 줄을 따라 좌우로 걷다가 아무 데서나 멈춰 잠시 대기 애니메이션을 하고, 다시 아무 방향으로 걷는다.
     ///   한 번 멈춘 뒤에는 최소 몇 초(설정값) 동안 다시 멈추지 않는다. 좌우 끝에 닿으면 멈추지 않고 돌아선다.
     /// - Float: 좌우로 떠다니면서 위아래로도 오르내린다. 멈추지 않는다.
-    /// 맞으면 체력이 1 줄어든다. 체력이 남아 있으면 잠깐 번쩍이며 움찔하고(멈춤 + 흔들림),
+    /// 맞으면 체력이 1 줄어든다. 체력이 남아 있으면 잠깐 번쩍이며 움찔하고(멈춤 + 흔들림, 맞는 그림이 있으면 재생),
     /// 0이 되면 번쩍인 뒤 (쓰러지는 그림이 있으면 먼저 재생하고) 옆으로 쓰러지고, 누운 채 서서히 사라진다.
+    /// 쓰러지는 그림에 누운 모습까지 그려져 있으면 옆으로 넘어뜨리지 않고 마지막 그림으로 잠시 있다가 사라진다.
     /// 위치는 활동 범위 기준 각도로 들고 있다.
     /// </summary>
     [RequireComponent(typeof(SpriteRenderer))]
@@ -23,6 +24,7 @@ namespace BeOdysseus
         private const float FallenAngle = 88f;
         private static readonly Color HitTint = new(1f, 0.4f, 0.4f);
         // 맞았지만 쓰러지지 않을 때: 이 시간(초) 동안 멈춰서 좌우로 흔들린다. 흔들림 폭(도)은 점점 줄어든다.
+        // 맞는 그림이 있으면 그 그림을 한 번 다 트는 시간만큼 움찔한다.
         private const float HurtSeconds = 0.35f;
         private const float HurtShakeDegrees = 1.2f;
         private const float HurtShakeCycles = 3f;
@@ -51,6 +53,7 @@ namespace BeOdysseus
         private float _fallSign;
         private float _fallAngle;
         private int _health;
+        private float _hurtSeconds;
         private float _hurtLeft;
         private float _shakeDegrees;
 
@@ -64,6 +67,7 @@ namespace BeOdysseus
         public bool IsDying => _motion == Motion.Dying;
 
         private bool IsFloating => _animation != null && _animation.Movement == MonsterMovement.Float;
+        private bool HasHitFrames => _animation != null && _animation.HasHitFrames;
         private bool HasDeathFrames => _animation != null && _animation.HasDeathFrames;
 
         /// <summary>정확도 계산 기준점의 월드 위치.</summary>
@@ -154,7 +158,8 @@ namespace BeOdysseus
                 return true;
             }
 
-            _hurtLeft = HurtSeconds;
+            _hurtSeconds = HasHitFrames ? _animation.HitFrames.Length / _animation.HitFramesPerSecond : HurtSeconds;
+            _hurtLeft = _hurtSeconds;
             return false;
         }
 
@@ -191,20 +196,38 @@ namespace BeOdysseus
             if (gameObject.activeSelf) UpdatePose();
         }
 
-        /// <summary>맞았지만 쓰러지지 않았을 때: 멈춰서 빨갛게 번쩍이고 좌우로 흔들린다. 끝나면 하던 움직임을 이어 간다.</summary>
+        /// <summary>
+        /// 맞았지만 쓰러지지 않았을 때: 멈춰서 빨갛게 번쩍이고 좌우로 흔들린다. 끝나면 하던 움직임을 이어 간다.
+        /// 맞는 그림이 있으면 그 그림을 한 번 틀고, 없으면 쓰러지는 그림 한 장(맞는 자세)을 잠깐 보여 준다.
+        /// </summary>
         private void TickHurt(float dt)
         {
             _hurtLeft = Mathf.Max(0f, _hurtLeft - dt);
-            float t = 1f - _hurtLeft / HurtSeconds;
+            float t = 1f - _hurtLeft / _hurtSeconds;
 
             _renderer.color = Color.Lerp(HitTint, Color.white, t);
             _shakeDegrees = Mathf.Sin(t * HurtShakeCycles * 2f * Mathf.PI) * HurtShakeDegrees * (1f - t);
-            if (HasDeathFrames && _animation.DeathFrames.Length > HurtPoseFrame)
-                _renderer.sprite = _hurtLeft > 0f ? _animation.DeathFrames[HurtPoseFrame] : _referenceSprite;
+            if (_hurtLeft <= 0f)
+            {
+                if (HasHitFrames || HasDeathFrames) _renderer.sprite = _referenceSprite;
+                return;
+            }
+
+            if (HasHitFrames)
+            {
+                Sprite[] frames = _animation.HitFrames;
+                int index = Mathf.Min((int)((_hurtSeconds - _hurtLeft) * _animation.HitFramesPerSecond), frames.Length - 1);
+                _renderer.sprite = frames[index];
+            }
+            else if (HasDeathFrames && _animation.DeathFrames.Length > HurtPoseFrame)
+            {
+                _renderer.sprite = _animation.DeathFrames[HurtPoseFrame];
+            }
         }
 
         /// <summary>
         /// 쓰러지는 순서: [쓰러지는 그림 재생(없으면 짧게 번쩍)] → [발밑을 축으로 옆으로 넘어짐] → [누운 채 사라짐].
+        /// 쓰러지는 그림에 누운 모습까지 그려져 있으면 넘어지는 대신 그 시간만큼 마지막 그림으로 가만히 있는다.
         /// 맞은 직후 잠깐은 빨갛게 번쩍인다.
         /// </summary>
         private void TickDeath(float dt)
@@ -224,7 +247,8 @@ namespace BeOdysseus
             }
 
             // 처음엔 천천히, 갈수록 빨리 넘어진다(떨어지는 느낌).
-            float fall = Mathf.Clamp01((_deathTime - motionSeconds) / fallSeconds);
+            bool drawnFall = HasDeathFrames && _animation.DeathFramesShowFall;
+            float fall = drawnFall ? 0f : Mathf.Clamp01((_deathTime - motionSeconds) / fallSeconds);
             _fallAngle = _fallSign * FallenAngle * fall * fall;
 
             Color color = _deathTime < flashSeconds ? HitTint : Color.white;

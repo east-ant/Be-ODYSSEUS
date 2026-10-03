@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: 77ee71a07c0845a48a71ed75814444b2
+guid: a38778196be2d6b469f38b1322285ae7
 TextureImporter:
   internalIDToNameTable: []
   externalObjects: {}
@@ -48,7 +48,7 @@ TextureImporter:
   spriteMeshType: 1
   alignment: 0
   spritePivot: {x: 0.5, y: 0.5}
-  spritePixelsToUnits: 130
+  spritePixelsToUnits: 100
   spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spriteGenerateFallbackPhysicsShape: 1
   alphaUsage: 1
@@ -112,133 +112,177 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: polyphemus_death_0
+      name: shade_die_0
       rect:
         serializedVersion: 2
-        x: 29
-        y: 189
-        width: 110
-        height: 134
+        x: 34
+        y: 160
+        width: 59
+        height: 104
       alignment: 9
-      pivot: {x: 0.51363635, y: 0.014925373}
+      pivot: {x: 0.5084746, y: 0.01923077}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 26d0c4cc2b3a984499706b878fc0a63b
-      internalID: 909378565
+      spriteID: 2309fd878aec2c644aae7607f5c22c8d
+      internalID: -1741776935
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: polyphemus_death_1
+      name: shade_die_1
       rect:
         serializedVersion: 2
-        x: 190
-        y: 188
-        width: 135
-        height: 135
+        x: 158
+        y: 158
+        width: 66
+        height: 107
       alignment: 9
-      pivot: {x: 0.4888889, y: 0.014814815}
+      pivot: {x: 0.5151515, y: 0.037383176}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 91b778a2312961e41a507761e3241b2c
-      internalID: -1452820019
+      spriteID: 2ea45ebd42835214eb18b5643f2bdd49
+      internalID: -1950625557
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: polyphemus_death_2
+      name: shade_die_2
       rect:
         serializedVersion: 2
-        x: 356
-        y: 189
-        width: 139
-        height: 130
+        x: 281
+        y: 157
+        width: 72
+        height: 109
       alignment: 9
-      pivot: {x: 0.5071942, y: 0.015384615}
+      pivot: {x: 0.5416667, y: 0.04587156}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: b46009c562d8bee4286ec3d711c8c2a0
-      internalID: -499162630
+      spriteID: 4988e13265351644e931dbd9eef887d3
+      internalID: -1012447414
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: polyphemus_death_3
+      name: shade_die_3
       rect:
         serializedVersion: 2
-        x: 19
-        y: 20
-        width: 133
-        height: 132
+        x: 404
+        y: 153
+        width: 80
+        height: 121
       alignment: 9
-      pivot: {x: 0.5, y: 0.015151516}
+      pivot: {x: 0.55, y: 0.07438017}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 98297594984c83547a193cec53542c28
-      internalID: 235208666
+      spriteID: b67387eb2f34594499847b1f8e9634a1
+      internalID: 1734953480
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: polyphemus_death_4
+      name: shade_die_4
       rect:
         serializedVersion: 2
-        x: 201
-        y: 20
-        width: 110
-        height: 130
+        x: 21
+        y: 9
+        width: 85
+        height: 120
       alignment: 9
-      pivot: {x: 0.5, y: 0.015384615}
+      pivot: {x: 0.5058824, y: 0.075}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 6071e8b5fe724884b830d0df5fd2ab7d
-      internalID: -2139931621
+      spriteID: 131590d8515b01b499d43c40f64cf1c4
+      internalID: 487047922
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: polyphemus_death_5
+      name: shade_die_5
       rect:
         serializedVersion: 2
-        x: 372
-        y: 20
-        width: 109
-        height: 133
+        x: 150
+        y: 10
+        width: 83
+        height: 118
       alignment: 9
-      pivot: {x: 0.5, y: 0.015037594}
+      pivot: {x: 0.5060241, y: 0.06779661}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: d8c03a6aecdf9714280a3f2d54f8c872
-      internalID: 701759776
+      spriteID: d1d76ce7ff9ebdb4cbc1fef5fb39b2c9
+      internalID: 1975103477
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: shade_die_6
+      rect:
+        serializedVersion: 2
+        x: 278
+        y: 13
+        width: 80
+        height: 115
+      alignment: 9
+      pivot: {x: 0.525, y: 0.04347826}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 608801e74c1228e4db695fce615fc061
+      internalID: -1667257051
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: shade_die_7
+      rect:
+        serializedVersion: 2
+        x: 411
+        y: 16
+        width: 67
+        height: 86
+      alignment: 9
+      pivot: {x: 0.5522388, y: 0.023255814}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 5fa8b58c648db5243a263ced4076f049
+      internalID: 1895350348
       vertices: []
       indices: 
       edges: []
@@ -247,7 +291,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: fe8ea31486bde9b42a867f7d21f0a850
+    spriteID: 08f740f763d98c641919ba388d9cdc28
     internalID: 0
     vertices: []
     indices: 
@@ -257,12 +301,14 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      polyphemus_death_0: 909378565
-      polyphemus_death_1: -1452820019
-      polyphemus_death_2: -499162630
-      polyphemus_death_3: 235208666
-      polyphemus_death_4: -2139931621
-      polyphemus_death_5: 701759776
+      shade_die_0: -1741776935
+      shade_die_1: -1950625557
+      shade_die_2: -1012447414
+      shade_die_3: 1734953480
+      shade_die_4: 487047922
+      shade_die_5: 1975103477
+      shade_die_6: -1667257051
+      shade_die_7: 1895350348
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
