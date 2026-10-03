@@ -39,6 +39,7 @@ MonoBehaviour:
   - {fileID: -2139931621, guid: 77ee71a07c0845a48a71ed75814444b2, type: 3}
   - {fileID: 701759776, guid: 77ee71a07c0845a48a71ed75814444b2, type: 3}
   _deathFramesPerSecond: 10
+  _health: 2
   _movement: 0
   _floatCycleSeconds: 3
   _floatHeight01: 1

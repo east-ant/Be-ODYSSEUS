@@ -187,14 +187,17 @@ namespace BeOdysseus
         {
             if (_phase != Phase.Playing) return;
 
-            _allShots.Add(result);
-            _stageRun.Record(result);
-            _stageHud.Show(_stageRun);
+            // 맞히면 1점. 몬스터는 체력이 남아 있으면 움찔하고, 0이 되면 쓰러진다.
+            bool killed = false;
             if (result.Hit)
             {
                 Score++;
-                _monster.Die(result.ImpactPoint);
+                killed = _monster.TakeHit(result.ImpactPoint);
             }
+
+            _allShots.Add(result);
+            _stageRun.Record(result, killed);
+            _stageHud.Show(_stageRun);
             if (_stageRun.IsOver) EndStage();
         }
 

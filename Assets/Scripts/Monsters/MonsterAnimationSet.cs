@@ -34,6 +34,10 @@ namespace BeOdysseus
         [Tooltip("쓰러지는 애니메이션 초당 프레임 수.")]
         [SerializeField, Min(0.1f)] private float _deathFramesPerSecond = 10f;
 
+        [Header("능력치")]
+        [Tooltip("체력: 몇 번 맞혀야 쓰러지는지.")]
+        [SerializeField, Min(1)] private int _health = 1;
+
         [Header("움직임")]
         [SerializeField] private MonsterMovement _movement = MonsterMovement.Walk;
         [Tooltip("Float일 때 위아래로 한 번 오르내리는 데 걸리는 시간(초).")]
@@ -49,6 +53,7 @@ namespace BeOdysseus
         public Sprite[] DeathFrames => _deathFrames;
         public float DeathFramesPerSecond => _deathFramesPerSecond;
         public bool HasDeathFrames => _deathFrames != null && _deathFrames.Length > 0;
+        public int Health => _health;
         public MonsterMovement Movement => _movement;
         public float FloatCycleSeconds => _floatCycleSeconds;
         public float FloatHeight01 => _floatHeight01;

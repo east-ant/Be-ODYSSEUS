@@ -27,6 +27,7 @@ MonoBehaviour:
   _walkFacesRight: 1
   _deathFrames: []
   _deathFramesPerSecond: 10
+  _health: 2
   _movement: 1
   _floatCycleSeconds: 3
   _floatHeight01: 1

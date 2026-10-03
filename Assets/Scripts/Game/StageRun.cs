@@ -5,7 +5,7 @@ namespace BeOdysseus
 {
     /// <summary>
     /// 스테이지 한 판의 진행 기록: 남은 화살, 남은 시간, 쏜 발의 판정.
-    /// 몬스터를 맞히면 바로 클리어, 화살을 다 쓰거나 시간이 다 되면 실패로 끝난다.
+    /// 몬스터를 쓰러뜨리면(체력을 다 깎으면) 클리어, 화살을 다 쓰거나 시간이 다 되면 실패로 끝난다.
     /// </summary>
     public class StageRun
     {
@@ -30,11 +30,12 @@ namespace BeOdysseus
 
         public void Tick(float dt) => TimeLeft = Mathf.Max(0f, TimeLeft - dt);
 
-        public void Record(ShotResult shot)
+        /// <param name="killedMonster">이 발로 몬스터를 쓰러뜨렸는지(체력이 0이 됐는지).</param>
+        public void Record(ShotResult shot, bool killedMonster)
         {
             _shots.Add(shot);
             ArrowsLeft = Mathf.Max(0, ArrowsLeft - 1);
-            if (shot.Hit) IsCleared = true;
+            if (killedMonster) IsCleared = true;
         }
     }
 }

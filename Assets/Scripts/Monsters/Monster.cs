@@ -6,7 +6,8 @@ namespace BeOdysseus
     /// 2D 이미지 몬스터. 항상 플레이어 쪽을 바라보고(빌보드), 몬스터 종류에 따라 활동 범위 안을 움직인다.
     /// - Walk: 가운데 줄을 따라 좌우로 걷고, 좌우 끝에서 잠시(설정값) 대기 애니메이션 후 방향을 바꾼다.
     /// - Float: 좌우로 떠다니면서 위아래로도 오르내린다. 끝에서 멈추지 않는다.
-    /// 명중하면 번쩍인 뒤 (쓰러지는 그림이 있으면 먼저 재생하고) 옆으로 쓰러지고, 누운 채 서서히 사라진다.
+    /// 맞으면 체력이 1 줄어든다. 체력이 남아 있으면 잠깐 번쩍이며 움찔하고(멈춤 + 흔들림),
+    /// 0이 되면 번쩍인 뒤 (쓰러지는 그림이 있으면 먼저 재생하고) 옆으로 쓰러지고, 누운 채 서서히 사라진다.
     /// 위치는 활동 범위 기준 각도로 들고 있다.
     /// </summary>
     [RequireComponent(typeof(SpriteRenderer))]
@@ -20,6 +21,12 @@ namespace BeOdysseus
         // 다 넘어졌을 때 기운 각도(도). 90도면 완전히 누운 모습.
         private const float FallenAngle = 88f;
         private static readonly Color HitTint = new(1f, 0.4f, 0.4f);
+        // 맞았지만 쓰러지지 않을 때: 이 시간(초) 동안 멈춰서 좌우로 흔들린다. 흔들림 폭(도)은 점점 줄어든다.
+        private const float HurtSeconds = 0.35f;
+        private const float HurtShakeDegrees = 1.2f;
+        private const float HurtShakeCycles = 3f;
+        // 움찔할 때 보여 줄 쓰러짐 그림의 프레임(두 번째 = 팔을 벌리며 맞는 자세).
+        private const int HurtPoseFrame = 1;
 
         [SerializeField] private GameConfig _config;
         [Tooltip("정확도 계산의 기준점. 이미지 안에서의 비율 위치(0~1). 기본은 정가운데. 몸통이나 약점으로 옮길 수 있다.")]
@@ -41,9 +48,15 @@ namespace BeOdysseus
         private float _deathTime;
         private float _fallSign;
         private float _fallAngle;
+        private int _health;
+        private float _hurtLeft;
+        private float _shakeDegrees;
 
         /// <summary>정면 기준 현재 각도(x: 오른쪽 +, y: 위쪽 +).</summary>
         public Vector2 Angles => new(_angleX, _angleY);
+
+        /// <summary>남은 체력(쓰러뜨리려면 더 맞혀야 하는 횟수).</summary>
+        public int Health => _health;
 
         /// <summary>명중해서 쓰러지는 중인지. 다 쓰러져 사라지면 false.</summary>
         public bool IsDying => _motion == Motion.Dying;
@@ -105,6 +118,9 @@ namespace BeOdysseus
             _renderer.flipX = false;
             _renderer.color = Color.white;
             _fallAngle = 0f;
+            _health = animation != null ? animation.Health : 1;
+            _hurtLeft = 0f;
+            _shakeDegrees = 0f;
 
             // 크기는 기준 그림의 키로 정해서, 프레임이 바뀌어도 몬스터 크기가 일정하다.
             Bounds reference = _referenceSprite.bounds;
@@ -122,10 +138,29 @@ namespace BeOdysseus
             UpdatePose();
         }
 
-        /// <summary>명중했을 때. 맞은 쪽 반대로 쓰러진다(왼쪽을 맞으면 오른쪽으로). 다 쓰러지면 스스로 꺼진다.</summary>
-        public void Die(Vector3 hitPoint)
+        /// <summary>
+        /// 화살에 맞았을 때. 체력을 1 깎고, 0이 되면 쓰러지기 시작한다.
+        /// </summary>
+        /// <returns>이 발로 쓰러졌으면 true.</returns>
+        public bool TakeHit(Vector3 hitPoint)
         {
-            if (_motion is Motion.Dying or Motion.Dead) return;
+            if (_motion is Motion.Dying or Motion.Dead) return false;
+            _health--;
+            if (_health <= 0)
+            {
+                Die(hitPoint);
+                return true;
+            }
+
+            _hurtLeft = HurtSeconds;
+            return false;
+        }
+
+        /// <summary>쓰러진다. 맞은 쪽 반대로 넘어진다(왼쪽을 맞으면 오른쪽으로). 다 쓰러지면 스스로 꺼진다.</summary>
+        private void Die(Vector3 hitPoint)
+        {
+            _hurtLeft = 0f;
+            _shakeDegrees = 0f;
             Vector3 local = transform.InverseTransformPoint(hitPoint);
             // 기울기 각도가 +면 화면에서 왼쪽으로, -면 오른쪽으로 넘어진다.
             _fallSign = local.x <= 0f ? -1f : 1f;
@@ -142,12 +177,28 @@ namespace BeOdysseus
             {
                 TickDeath(dt);
             }
+            else if (_hurtLeft > 0f)
+            {
+                TickHurt(dt);
+            }
             else
             {
                 Move(dt);
                 Animate(dt);
             }
             if (gameObject.activeSelf) UpdatePose();
+        }
+
+        /// <summary>맞았지만 쓰러지지 않았을 때: 멈춰서 빨갛게 번쩍이고 좌우로 흔들린다. 끝나면 하던 움직임을 이어 간다.</summary>
+        private void TickHurt(float dt)
+        {
+            _hurtLeft = Mathf.Max(0f, _hurtLeft - dt);
+            float t = 1f - _hurtLeft / HurtSeconds;
+
+            _renderer.color = Color.Lerp(HitTint, Color.white, t);
+            _shakeDegrees = Mathf.Sin(t * HurtShakeCycles * 2f * Mathf.PI) * HurtShakeDegrees * (1f - t);
+            if (HasDeathFrames && _animation.DeathFrames.Length > HurtPoseFrame)
+                _renderer.sprite = _hurtLeft > 0f ? _animation.DeathFrames[HurtPoseFrame] : _referenceSprite;
         }
 
         /// <summary>
@@ -241,7 +292,7 @@ namespace BeOdysseus
 
         private void UpdatePose()
         {
-            transform.position = _area.GetWorldPoint(Angles) + Vector3.up * _verticalOffsetMeters;
+            transform.position = _area.GetWorldPoint(new Vector2(_angleX + _shakeDegrees, _angleY)) + Vector3.up * _verticalOffsetMeters;
 
             // 위아래로는 세운 채 좌우로만 돌려 플레이어를 바라보게 한다. 쓰러지는 중이면 그만큼 옆으로 기울인다.
             Vector3 away = transform.position - _viewer.position;
