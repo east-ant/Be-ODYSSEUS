@@ -6,10 +6,11 @@ namespace BeOdysseus
 {
     /// <summary>
     /// 스테이지 결과 화면. AR 위를 덮는 스크린 UI로 뜬다.
-    /// 왼쪽에 결과 카드(제목, 최종 점수, 명중률, 조준 안정도), 오른쪽에 스테이지 몬스터(대기 애니메이션),
+    /// 왼쪽에 결과 카드(제목, 최종 점수, 명중률, 조준 안정도), 오른쪽에 스테이지 몬스터,
     /// 오른쪽 아래에 다음으로 넘어가기까지의 카운트다운(5 → 1)을 보여 주고, 다 세면 CountdownFinished를 알린다.
-    /// 몬스터는 씬에서 정해 둔 칸 안에 그린다. 애니메이션 프레임은 모두 같은 배율로, 발밑을 칸 바닥 가운데에 맞춰서
-    /// 프레임이 바뀌어도 크기와 서 있는 자리가 흔들리지 않는다.
+    /// 몬스터는 고해상도 그림 한 장을 씬에서 정해 둔 칸에 발을 바닥에 붙여 그리고, 코드로 대기 동작을 준다.
+    /// (게임 중 애니메이션 그림은 한 장이 110px 정도로 작아서, 크게 띄우는 결과 화면에서는 흐릿하게 보인다.)
+    /// 걷는 몬스터는 발을 기준으로 숨 쉬듯 들썩이고, 떠다니는 몬스터는 위아래로 둥실거린다.
     /// </summary>
     public class ResultView : MonoBehaviour
     {
@@ -26,26 +27,32 @@ namespace BeOdysseus
         [SerializeField] private Color _clearTitleColor = new(1f, 0.82f, 0.25f);
         [SerializeField] private Color _failTitleColor = new(0.85f, 0.85f, 0.9f);
 
+        [Header("몬스터 대기 동작")]
+        [Tooltip("걷는 몬스터: 숨을 들이쉴 때 키가 커지는 비율(0.025 = 2.5%).")]
+        [SerializeField, Range(0f, 0.1f)] private float _breathAmount = 0.025f;
+        [Tooltip("걷는 몬스터: 숨 한 번(들이쉬고 내쉬기)에 걸리는 시간(초).")]
+        [SerializeField, Min(0.1f)] private float _breathSeconds = 2.4f;
+        [Tooltip("떠다니는 몬스터: 위아래로 오르내리는 폭(화면 기준 픽셀, 1920×1080 기준). 한 번 오르내리는 시간은 몬스터 애니메이션 설정을 따른다.")]
+        [SerializeField, Min(0f)] private float _floatBobPixels = 18f;
+
         private float _countdownLeft;
         private bool _isCounting;
 
         private RectTransform _monsterRect;
         private Vector2 _monsterBoxSize;
-        private Vector2 _monsterBoxPivot;
-        private Sprite[] _monsterFrames;
-        private float _monsterFramesPerSecond;
-        private float _monsterScale;
-        private float _monsterFrameTime;
-        private int _monsterFrameIndex;
+        private Vector2 _monsterBasePosition;
+        private bool _monsterFloats;
+        private float _monsterFloatSeconds;
+        private float _monsterIdleTime;
 
         public event Action CountdownFinished;
 
         private void Awake()
         {
-            // 씬에서 정한 몬스터 칸(크기, 바닥 가운데 기준점)을 기억해 둔다.
+            // 씬에서 정한 몬스터 칸(크기, 바닥 가운데 위치)을 기억해 둔다.
             _monsterRect = _monster.rectTransform;
             _monsterBoxSize = _monsterRect.sizeDelta;
-            _monsterBoxPivot = _monsterRect.pivot;
+            _monsterBasePosition = _monsterRect.anchoredPosition;
         }
 
         public void Show(StageResult result, StageDefinition stage, string countdownLabel, float countdownSeconds)
@@ -74,51 +81,42 @@ namespace BeOdysseus
             _root.SetActive(false);
         }
 
-        /// <summary>몬스터 대기 애니메이션을 처음부터 튼다. 애니메이션이 없으면 몬스터 그림 한 장을 칸에 맞춰 보여 준다.</summary>
+        /// <summary>몬스터 그림을 칸에 꼭 맞게(비율 유지, 발은 칸 바닥) 놓고 대기 동작을 처음부터 시작한다.</summary>
         private void ShowMonster(StageDefinition stage)
         {
+            Sprite sprite = stage.MonsterSprite;
+            _monster.sprite = sprite;
+            Vector2 size = sprite.rect.size;
+            _monsterRect.sizeDelta = size * Mathf.Min(_monsterBoxSize.x / size.x, _monsterBoxSize.y / size.y);
+
             MonsterAnimationSet animation = stage.MonsterAnimation;
-            _monsterFrames = animation != null ? animation.StandingFrames : null;
-            if (_monsterFrames == null || _monsterFrames.Length == 0)
-            {
-                _monsterFrames = null;
-                _monster.preserveAspect = true;
-                _monsterRect.sizeDelta = _monsterBoxSize;
-                _monsterRect.pivot = _monsterBoxPivot;
-                _monster.sprite = stage.MonsterSprite;
-                return;
-            }
-
-            // 가장 큰 프레임이 칸에 딱 들어가는 배율 하나를 모든 프레임에 쓴다.
-            Vector2 largest = Vector2.zero;
-            foreach (Sprite frame in _monsterFrames) largest = Vector2.Max(largest, frame.rect.size);
-            _monsterScale = Mathf.Min(_monsterBoxSize.x / largest.x, _monsterBoxSize.y / largest.y);
-            _monsterFramesPerSecond = animation.StandingFramesPerSecond;
-            _monsterFrameTime = 0f;
-            _monster.preserveAspect = false;
-            SetMonsterFrame(0);
-        }
-
-        private void SetMonsterFrame(int index)
-        {
-            Sprite frame = _monsterFrames[index];
-            _monsterFrameIndex = index;
-            _monster.sprite = frame;
-            _monsterRect.sizeDelta = frame.rect.size * _monsterScale;
-            // 그림의 기준점(발밑)을 칸의 기준점(바닥 가운데) 자리에 둔다.
-            _monsterRect.pivot = frame.pivot / frame.rect.size;
+            _monsterFloats = animation != null && animation.Movement == MonsterMovement.Float;
+            _monsterFloatSeconds = animation != null ? animation.FloatCycleSeconds : 1f;
+            _monsterIdleTime = 0f;
+            TickMonster(0f);
         }
 
         private void TickMonster(float dt)
         {
-            _monsterFrameTime += dt;
-            int index = (int)(_monsterFrameTime * _monsterFramesPerSecond) % _monsterFrames.Length;
-            if (index != _monsterFrameIndex) SetMonsterFrame(index);
+            _monsterIdleTime += dt;
+            if (_monsterFloats)
+            {
+                float bob = Mathf.Sin(_monsterIdleTime * 2f * Mathf.PI / _monsterFloatSeconds) * _floatBobPixels;
+                _monsterRect.anchoredPosition = _monsterBasePosition + new Vector2(0f, bob);
+                _monsterRect.localScale = Vector3.one;
+                return;
+            }
+
+            // 0(내쉼) → 1(들이쉼) → 0. 칸의 기준점이 바닥 가운데라 발은 제자리에 있고 몸만 위로 커진다.
+            float breath = 0.5f - 0.5f * Mathf.Cos(_monsterIdleTime * 2f * Mathf.PI / _breathSeconds);
+            float grow = _breathAmount * breath;
+            _monsterRect.anchoredPosition = _monsterBasePosition;
+            _monsterRect.localScale = new Vector3(1f + grow * 0.4f, 1f + grow, 1f);
         }
 
         private void Update()
         {
-            if (_monsterFrames != null && _root.activeSelf) TickMonster(Time.unscaledDeltaTime);
+            if (_root.activeSelf) TickMonster(Time.unscaledDeltaTime);
             if (!_isCounting) return;
             _countdownLeft -= Time.unscaledDeltaTime;
             UpdateCountdownNumber();

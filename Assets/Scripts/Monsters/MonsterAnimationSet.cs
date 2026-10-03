@@ -58,15 +58,9 @@ namespace BeOdysseus
         public float FloatCycleSeconds => _floatCycleSeconds;
         public float FloatHeight01 => _floatHeight01;
 
-        private bool HasIdleFrames => _idleFrames != null && _idleFrames.Length > 0;
-
-        /// <summary>제자리에서 보여 줄 프레임(결과 화면 등). 대기 그림이 없으면 걷기(떠다니기) 그림을 쓴다.</summary>
-        public Sprite[] StandingFrames => HasIdleFrames ? _idleFrames : _walkFrames;
-        public float StandingFramesPerSecond => HasIdleFrames ? _idleFramesPerSecond : _walkFramesPerSecond;
-
         /// <summary>크기를 정할 때 기준으로 삼는 그림(대기 첫 프레임, 없으면 걷기 첫 프레임).</summary>
         public Sprite ReferenceFrame =>
-            HasIdleFrames ? _idleFrames[0]
+            _idleFrames != null && _idleFrames.Length > 0 ? _idleFrames[0]
             : _walkFrames != null && _walkFrames.Length > 0 ? _walkFrames[0] : null;
     }
 }

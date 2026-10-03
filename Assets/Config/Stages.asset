@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Stages
   m_EditorClassIdentifier: Assembly-CSharp::BeOdysseus.StageList
   _stages:
-  - _monsterSprite: {fileID: 21300000, guid: 229cc68c4d5443d4993e694abf487edb, type: 3}
+  - _monsterSprite: {fileID: 21300000, guid: 0b1de92422f0d44429bfc02288abd7db, type: 3}
     _monsterAnimation: {fileID: 11400000, guid: ceb45c9f51cacc340949ee32a927d25d, type: 2}
     _resultBackground: {fileID: 21300000, guid: 6e052d3f5a07995458fd51339c7c04ef, type: 3}
   - _monsterSprite: {fileID: 21300000, guid: e6c3fe7e8e6f31443bd5820325950238, type: 3}
