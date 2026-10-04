@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace BeOdysseus
@@ -7,6 +8,8 @@ namespace BeOdysseus
     /// - Walk: 가운데 줄을 따라 좌우로 걷다가 아무 데서나 멈춰 잠시 대기 애니메이션을 하고, 다시 아무 방향으로 걷는다.
     ///   한 번 멈춘 뒤에는 최소 몇 초(설정값) 동안 다시 멈추지 않는다. 좌우 끝에 닿으면 멈추지 않고 돌아선다.
     /// - Float: 좌우로 떠다니면서 위아래로도 오르내린다. 멈추지 않는다.
+    /// - Swoop: 한 자리에 떠서 잠시 대기 애니메이션을 하다가, 활동 범위 아무 곳(위아래 포함)으로 휙 날아간다.
+    ///   날아가는 동안은 가는 쪽으로 기울고, 날갯짓하듯 좌우 폭이 빠르게 커졌다 작아지며, 날개 쪽에서 깃털을 떨어뜨린다.
     /// 맞으면 체력이 1 줄어든다. 체력이 남아 있으면 잠깐 번쩍이며 움찔하고(멈춤 + 흔들림, 맞는 그림이 있으면 재생),
     /// 0이 되면 번쩍인 뒤 (쓰러지는 그림이 있으면 먼저 재생하고) 옆으로 쓰러지고, 누운 채 서서히 사라진다.
     /// 쓰러지는 그림에 누운 모습까지 그려져 있으면 옆으로 넘어뜨리지 않고 마지막 그림으로 잠시 있다가 사라진다.
@@ -30,6 +33,16 @@ namespace BeOdysseus
         private const float HurtShakeCycles = 3f;
         // 움찔할 때 보여 줄 쓰러짐 그림의 프레임(두 번째 = 팔을 벌리며 맞는 자세).
         private const int HurtPoseFrame = 1;
+        // Swoop로 날아갈 때 떨어뜨리는 깃털이 나오는 자리(그림 크기 대비): 몸 가운데를 뺀 날개 쪽, 허리~어깨 높이.
+        private const float FeatherInnerX = 0.15f;
+        private const float FeatherOuterX = 0.45f;
+        private const float FeatherMinY = 0.3f;
+        private const float FeatherMaxY = 0.85f;
+        // 깃털의 처음 속도: 몬스터가 가던 속도를 이만큼 받아 조금 따라가다 떨어진다.
+        private const float FeatherKeepMomentum = 0.3f;
+        // 깃털마다 다르게 흩어지는 속도와 처음에 살짝 떠오르는 속도(몬스터 키 대비, 초당).
+        private const float FeatherScatter = 0.12f;
+        private const float FeatherLift = 0.1f;
 
         [SerializeField] private GameConfig _config;
         [Tooltip("정확도 계산의 기준점. 이미지 안에서의 비율 위치(0~1). 기본은 정가운데. 몸통이나 약점으로 옮길 수 있다.")]
@@ -48,8 +61,19 @@ namespace BeOdysseus
         private Motion _motion;
         private float _restLeft;
         private float _walkLeftBeforeRest;
+        private Vector2 _flightFrom;
+        private Vector2 _flightTo;
+        private float _flightTime;
+        private float _bankAngle;
+        private float _flapScale = 1f;
+        private float _featherDue;
+        private Vector3 _lastPosition;
+        private Transform _featherRoot;
+        private readonly List<FallingFeather> _feathers = new();
+        private float _baseScale;
         private float _frameTime;
         private float _deathTime;
+        private float _deathStartAngleY;
         private float _fallSign;
         private float _fallAngle;
         private int _health;
@@ -67,6 +91,7 @@ namespace BeOdysseus
         public bool IsDying => _motion == Motion.Dying;
 
         private bool IsFloating => _animation != null && _animation.Movement == MonsterMovement.Float;
+        private bool IsSwooping => _animation != null && _animation.Movement == MonsterMovement.Swoop;
         private bool HasHitFrames => _animation != null && _animation.HasHitFrames;
         private bool HasDeathFrames => _animation != null && _animation.HasDeathFrames;
 
@@ -124,23 +149,33 @@ namespace BeOdysseus
             _renderer.flipX = false;
             _renderer.color = Color.white;
             _fallAngle = 0f;
+            _bankAngle = 0f;
+            _flapScale = 1f;
             _health = animation != null ? animation.Health : 1;
             _hurtLeft = 0f;
             _shakeDegrees = 0f;
 
             // 크기는 기준 그림의 키로 정해서, 프레임이 바뀌어도 몬스터 크기가 일정하다.
             Bounds reference = _referenceSprite.bounds;
-            float scale = _config.MonsterHeightMeters / reference.size.y;
-            transform.localScale = Vector3.one * scale;
+            _baseScale = _config.MonsterHeightMeters / reference.size.y;
+            transform.localScale = Vector3.one * _baseScale;
             // 그림의 기준점이 발밑이든 가운데든, 몸 가운데가 정해진 높이에 오게 맞춘다.
-            _verticalOffsetMeters = -reference.center.y * scale;
+            _verticalOffsetMeters = -reference.center.y * _baseScale;
 
             float limit = HorizontalLimitDegrees();
             _angleX = Random.Range(-limit, limit);
             _floatPhase = Random.Range(0f, 2f * Mathf.PI);
             _angleY = IsFloating ? FloatAngleY() : 0f;
             _direction = Random.value < 0.5f ? -1 : 1;
-            StartWalking();
+            if (IsSwooping)
+            {
+                _angleY = Random.Range(-VerticalLimitDegrees(), VerticalLimitDegrees());
+                StartHovering(); // 처음엔 제자리에 떠 있어서 어디 있는지 먼저 보인다
+            }
+            else
+            {
+                StartWalking();
+            }
             UpdatePose();
         }
 
@@ -168,12 +203,15 @@ namespace BeOdysseus
         {
             _hurtLeft = 0f;
             _shakeDegrees = 0f;
+            _bankAngle = 0f;
+            _flapScale = 1f;
             Vector3 local = transform.InverseTransformPoint(hitPoint);
             // 기울기 각도가 +면 화면에서 왼쪽으로, -면 오른쪽으로 넘어진다.
             _fallSign = local.x <= 0f ? -1f : 1f;
             if (HasDeathFrames) _renderer.flipX = false; // 쓰러지는 그림은 그려진 방향 그대로 보여 준다
             _motion = Motion.Dying;
             _deathTime = 0f;
+            _deathStartAngleY = _angleY;
         }
 
         private void Update()
@@ -228,7 +266,7 @@ namespace BeOdysseus
         /// <summary>
         /// 쓰러지는 순서: [쓰러지는 그림 재생(없으면 짧게 번쩍)] → [발밑을 축으로 옆으로 넘어짐] → [누운 채 사라짐].
         /// 쓰러지는 그림에 누운 모습까지 그려져 있으면 넘어지는 대신 그 시간만큼 마지막 그림으로 가만히 있는다.
-        /// 맞은 직후 잠깐은 빨갛게 번쩍인다.
+        /// 맞은 직후 잠깐은 빨갛게 번쩍인다. 바닥으로 떨어지도록 설정된 몬스터는 정해진 시간 동안 활동 범위 바닥까지 떨어진다.
         /// </summary>
         private void TickDeath(float dt)
         {
@@ -244,6 +282,13 @@ namespace BeOdysseus
                 Sprite[] frames = _animation.DeathFrames;
                 motionSeconds = frames.Length / _animation.DeathFramesPerSecond;
                 _renderer.sprite = frames[Mathf.Min((int)(_deathTime * _animation.DeathFramesPerSecond), frames.Length - 1)];
+            }
+
+            // 공중에서 쓰러지면 먼저 바닥까지 떨어진다. 처음엔 천천히, 갈수록 빨리.
+            if (_animation != null && _animation.DeathDropsToGround)
+            {
+                float drop = Mathf.Clamp01(_deathTime / _animation.DeathDropSeconds);
+                _angleY = Mathf.Lerp(_deathStartAngleY, -VerticalLimitDegrees(), drop * drop);
             }
 
             // 처음엔 천천히, 갈수록 빨리 넘어진다(떨어지는 느낌).
@@ -262,6 +307,12 @@ namespace BeOdysseus
 
         private void Move(float dt)
         {
+            if (IsSwooping)
+            {
+                Swoop(dt);
+                return;
+            }
+
             if (_motion == Motion.Resting)
             {
                 _restLeft -= dt;
@@ -278,7 +329,8 @@ namespace BeOdysseus
             }
 
             float limit = HorizontalLimitDegrees();
-            _angleX += _direction * _config.MonsterMoveSpeedDegrees * dt;
+            float speedScale = _animation != null ? _animation.MoveSpeedScale : 1f;
+            _angleX += _direction * _config.MonsterMoveSpeedDegrees * speedScale * dt;
             if (Mathf.Abs(_angleX) >= limit)
             {
                 // 좌우 끝에 닿으면 멈추지 않고 바로 돌아선다.
@@ -292,6 +344,112 @@ namespace BeOdysseus
         }
 
         private float FloatAngleY() => VerticalLimitDegrees() * _animation.FloatHeight01 * Mathf.Sin(_floatPhase);
+
+        /// <summary>
+        /// Swoop: 떠 있기(대기 애니메이션) → 다음 자리로 날아가기(이동 애니메이션) → 다시 떠 있기를 반복한다.
+        /// 날아갈 때는 천천히 출발해 빨라졌다가 도착하면서 느려진다. 빠를수록(가운데쯤) 가는 쪽으로 더 기울고
+        /// 날갯짓도 세진다. 날아가는 동안 깃털을 떨어뜨린다.
+        /// </summary>
+        private void Swoop(float dt)
+        {
+            if (_motion == Motion.Resting)
+            {
+                _restLeft -= dt;
+                if (_restLeft <= 0f) StartFlight();
+                return;
+            }
+
+            _flightTime += dt;
+            float t = Mathf.Clamp01(_flightTime / _animation.SwoopFlightSeconds);
+            Vector2 angles = Vector2.Lerp(_flightFrom, _flightTo, Mathf.SmoothStep(0f, 1f, t));
+            _angleX = angles.x;
+            _angleY = angles.y;
+
+            float midFlight = Mathf.Sin(t * Mathf.PI); // 출발·도착 때 0, 가운데서 1
+            _bankAngle = -_direction * _animation.SwoopBankDegrees * midFlight; // 기울기 +는 왼쪽
+            float flap = Mathf.Sin(_flightTime * 2f * Mathf.PI * _animation.SwoopFlapsPerSecond);
+            _flapScale = 1f + _animation.SwoopFlapAmount * Mathf.Min(1f, midFlight * 3f) * flap;
+            if (_animation.HasSwoopTrail) DropFeathers(dt);
+
+            if (t >= 1f) StartHovering();
+        }
+
+        private void StartHovering()
+        {
+            _motion = Motion.Resting;
+            _restLeft = Random.Range(_animation.SwoopHoverMinSeconds, _animation.SwoopHoverMaxSeconds);
+            _frameTime = 0f;
+            _bankAngle = 0f;
+            _flapScale = 1f;
+        }
+
+        /// <summary>날아가는 동안 날개 쪽에서 깃털을 떨어뜨린다. 떨어진 깃털은 그 자리에 남아 따로 떨어진다.</summary>
+        private void DropFeathers(float dt)
+        {
+            Vector3 position = transform.position;
+            Vector3 velocity = dt > 0f ? (position - _lastPosition) / dt : Vector3.zero;
+            _lastPosition = position;
+
+            float unit = _config.MonsterHeightMeters;
+            Bounds b = _referenceSprite.bounds;
+            Sprite[] sprites = _animation.SwoopTrailSprites;
+            _featherDue += _animation.SwoopTrailPerSecond * dt;
+            while (_featherDue >= 1f)
+            {
+                _featherDue -= 1f;
+                float side = Random.value < 0.5f ? -1f : 1f;
+                var local = new Vector3(
+                    b.center.x + side * Random.Range(FeatherInnerX, FeatherOuterX) * b.size.x,
+                    b.min.y + Random.Range(FeatherMinY, FeatherMaxY) * b.size.y,
+                    0f);
+                Vector3 start = transform.TransformPoint(local);
+                Vector3 push = velocity * FeatherKeepMomentum + Random.insideUnitSphere * (FeatherScatter * unit) + Vector3.up * (FeatherLift * unit);
+                Sprite sprite = sprites[Random.Range(0, sprites.Length)];
+                // 몸보다 뒤에 그려서, 몸 위에 깃털이 덮이지 않게 한다.
+                NextFeather().Play(sprite, start, push, _viewer, _baseScale * _animation.SwoopTrailScale, unit,
+                    _animation.SwoopTrailLifeSeconds, _renderer.sortingOrder - 1);
+            }
+        }
+
+        private FallingFeather NextFeather()
+        {
+            foreach (FallingFeather feather in _feathers)
+                if (!feather.IsPlaying) return feather;
+
+            // 몬스터를 따라 움직이지 않게(떨어진 자리에 남게) 몬스터 밖에 따로 모아 둔다.
+            if (_featherRoot == null) _featherRoot = new GameObject("MonsterFeathers").transform;
+            var go = new GameObject("Feather", typeof(SpriteRenderer), typeof(FallingFeather));
+            go.transform.SetParent(_featherRoot, false);
+            var created = go.GetComponent<FallingFeather>();
+            _feathers.Add(created);
+            return created;
+        }
+
+        private void OnDestroy()
+        {
+            if (_featherRoot != null) Destroy(_featherRoot.gameObject);
+        }
+
+        /// <summary>활동 범위 안에서 지금 자리와 충분히 떨어진 곳을 골라 날아가기 시작한다.</summary>
+        private void StartFlight()
+        {
+            const int maxTries = 10;
+            var limit = new Vector2(HorizontalLimitDegrees(), VerticalLimitDegrees());
+            float minJumpDegrees = _animation.SwoopMinJump01 * 2f * limit.x;
+            _flightFrom = new Vector2(_angleX, _angleY);
+            for (int i = 0; i < maxTries; i++)
+            {
+                _flightTo = new Vector2(Random.Range(-limit.x, limit.x), Random.Range(-limit.y, limit.y));
+                if (Vector2.Distance(_flightFrom, _flightTo) >= minJumpDegrees) break;
+            }
+
+            _direction = _flightTo.x >= _flightFrom.x ? 1 : -1;
+            _flightTime = 0f;
+            _motion = Motion.Walking;
+            _frameTime = 0f;
+            _featherDue = _animation.SwoopTrailBurst; // 날아오르는 순간 한꺼번에 떨어뜨린다
+            _lastPosition = transform.position;
+        }
 
         private void StartWalking()
         {
@@ -319,32 +477,34 @@ namespace BeOdysseus
             _frameTime += dt;
             float fps = frames == _animation.WalkFrames ? _animation.WalkFramesPerSecond : _animation.IdleFramesPerSecond;
             _renderer.sprite = frames[(int)(_frameTime * fps) % frames.Length];
-            // 가는 방향과 그림의 방향이 다르면 좌우를 뒤집는다. 대기 중에는 그대로.
-            _renderer.flipX = walking && (_direction < 0) == _animation.WalkFacesRight;
+            // 가는 방향과 그림의 방향이 다르면 좌우를 뒤집는다. 대기 중이거나 정면을 보고 움직이는 그림이면 그대로.
+            _renderer.flipX = walking && _animation.FlipToMoveDirection && (_direction < 0) == _animation.WalkFacesRight;
         }
 
         private void UpdatePose()
         {
             transform.position = _area.GetWorldPoint(new Vector2(_angleX + _shakeDegrees, _angleY)) + Vector3.up * _verticalOffsetMeters;
 
-            // 위아래로는 세운 채 좌우로만 돌려 플레이어를 바라보게 한다. 쓰러지는 중이면 그만큼 옆으로 기울인다.
+            // 위아래로는 세운 채 좌우로만 돌려 플레이어를 바라보게 한다.
+            // 쓰러지는 중이거나 날아가는 중이면 그만큼 옆으로 기울이고, 날갯짓 중이면 좌우 폭을 바꾼다.
             Vector3 away = transform.position - _viewer.position;
             away.y = 0f;
             if (away.sqrMagnitude > 1e-6f)
-                transform.rotation = Quaternion.LookRotation(away, Vector3.up) * Quaternion.Euler(0f, 0f, _fallAngle);
+                transform.rotation = Quaternion.LookRotation(away, Vector3.up) * Quaternion.Euler(0f, 0f, _fallAngle + _bankAngle);
+            transform.localScale = new Vector3(_baseScale * _flapScale, _baseScale, _baseScale);
         }
 
         /// <summary>몬스터가 범위 밖으로 삐져나가지 않고 움직일 수 있는 좌우 최대 각도.</summary>
         private float HorizontalLimitDegrees()
         {
-            float halfWidthMeters = _referenceSprite.bounds.extents.x * transform.localScale.x;
+            float halfWidthMeters = _referenceSprite.bounds.extents.x * _baseScale;
             return Mathf.Max(0f, _area.HalfSizeDegrees.x - MetersToDegrees(halfWidthMeters));
         }
 
         /// <summary>몬스터가 범위 밖으로 삐져나가지 않고 움직일 수 있는 위아래 최대 각도.</summary>
         private float VerticalLimitDegrees()
         {
-            float halfHeightMeters = _referenceSprite.bounds.extents.y * transform.localScale.y;
+            float halfHeightMeters = _referenceSprite.bounds.extents.y * _baseScale;
             return Mathf.Max(0f, _area.HalfSizeDegrees.y - MetersToDegrees(halfHeightMeters));
         }
 

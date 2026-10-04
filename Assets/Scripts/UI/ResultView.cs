@@ -90,7 +90,7 @@ namespace BeOdysseus
             _monsterRect.sizeDelta = size * Mathf.Min(_monsterBoxSize.x / size.x, _monsterBoxSize.y / size.y);
 
             MonsterAnimationSet animation = stage.MonsterAnimation;
-            _monsterFloats = animation != null && animation.Movement == MonsterMovement.Float;
+            _monsterFloats = animation != null && animation.Flies;
             _monsterFloatSeconds = animation != null ? animation.FloatCycleSeconds : 1f;
             _monsterIdleTime = 0f;
             TickMonster(0f);

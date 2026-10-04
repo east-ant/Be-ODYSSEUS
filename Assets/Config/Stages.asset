@@ -19,3 +19,6 @@ MonoBehaviour:
   - _monsterSprite: {fileID: 21300000, guid: e6c3fe7e8e6f31443bd5820325950238, type: 3}
     _monsterAnimation: {fileID: 11400000, guid: 97a958a980b89b148873911c5677bee2, type: 2}
     _resultBackground: {fileID: 21300000, guid: 6e052d3f5a07995458fd51339c7c04ef, type: 3}
+  - _monsterSprite: {fileID: 21300000, guid: 650c6fe191ca8e94ba4cc6f7171ed3fc, type: 3}
+    _monsterAnimation: {fileID: 11400000, guid: 0e4e0905a3172a141980e52f670796dd, type: 2}
+    _resultBackground: {fileID: 21300000, guid: 6e052d3f5a07995458fd51339c7c04ef, type: 3}
