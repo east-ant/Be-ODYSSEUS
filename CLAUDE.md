@@ -1,5 +1,4 @@
 # Be ODYSSEUS — Claude Code 작업 규칙
-
 ## 프로젝트 환경
 
 - Unity **6000.6.3f1** (Unity 6)
