@@ -23,8 +23,9 @@ MonoBehaviour:
   - {fileID: -931252481, guid: 2fe4ed8e6f2a07c4aa11a3d2609e341d, type: 3}
   - {fileID: -857629584, guid: 2fe4ed8e6f2a07c4aa11a3d2609e341d, type: 3}
   - {fileID: -270462258, guid: 2fe4ed8e6f2a07c4aa11a3d2609e341d, type: 3}
-  _walkFramesPerSecond: 6
+  _walkFramesPerSecond: 4
   _walkFacesRight: 1
+  _flipToMoveDirection: 1
   _hitFrames:
   - {fileID: 166581421, guid: 32e94c74e4729b142bd6fb06f6a9f4f7, type: 3}
   - {fileID: 1979259900, guid: 32e94c74e4729b142bd6fb06f6a9f4f7, type: 3}
@@ -44,7 +45,21 @@ MonoBehaviour:
   - {fileID: 1895350348, guid: a38778196be2d6b469f38b1322285ae7, type: 3}
   _deathFramesPerSecond: 8
   _deathFramesShowFall: 1
+  _deathDropsToGround: 0
   _health: 2
   _movement: 1
-  _floatCycleSeconds: 3
+  _moveSpeedScale: 0.5
+  _floatCycleSeconds: 6
   _floatHeight01: 1
+  _swoopHoverMinSeconds: 2
+  _swoopHoverMaxSeconds: 3
+  _swoopFlightSeconds: 1
+  _swoopMinJump01: 0.35
+  _swoopTrailSprites: []
+  _swoopTrailPerSecond: 14
+  _swoopTrailBurst: 5
+  _swoopTrailScale: 1.6
+  _swoopTrailLifeSeconds: 1.4
+  _swoopBankDegrees: 12
+  _swoopFlapAmount: 0.08
+  _swoopFlapsPerSecond: 6
