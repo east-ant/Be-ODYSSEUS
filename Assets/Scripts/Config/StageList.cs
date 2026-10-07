@@ -14,8 +14,11 @@ namespace BeOdysseus
         [SerializeField] private MonsterAnimationSet _monsterAnimation;
         [Tooltip("결과 화면 배경.")]
         [SerializeField] private Sprite _resultBackground;
+        [Tooltip("태블릿에 보내는 몬스터 이름(docs/TABLET_LINK_PROTOCOL.md의 monster 값). 예: polyphemus, shade, siren")]
+        [SerializeField] private string _monsterId;
 
         public Sprite MonsterSprite => _monsterSprite;
+        public string MonsterId => _monsterId;
         public MonsterAnimationSet MonsterAnimation => _monsterAnimation;
         public Sprite ResultBackground => _resultBackground;
     }

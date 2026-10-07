@@ -43,8 +43,16 @@ namespace BeOdysseus
         private StageResult _lastStageResult;
         private float _resultDelayLeft;
 
+        /// <summary>"게임 시작"을 눌렀을 때.</summary>
+        public event Action GameStarted;
+        /// <summary>스테이지가 시작될 때. 그 스테이지의 진행 기록과 설정(몬스터)이 담긴다.</summary>
+        public event Action<StageRun, StageDefinition> StageStarted;
+        /// <summary>스테이지 중 한 발의 판정이 기록될 때. bool은 이 발로 몬스터를 쓰러뜨렸는지.</summary>
+        public event Action<ShotResult, StageRun, bool> ShotRecorded;
         /// <summary>스테이지가 끝날 때마다(클리어든 실패든). 결과 화면·음성 피드백에서 쓸 값이 담긴다.</summary>
         public event Action<StageResult> StageFinished;
+        /// <summary>게임이 끝나 메인 화면으로 돌아갈 때. 마지막 스테이지까지 마쳤으면 true, 중간에 나갔으면 false. 값은 누적 결과.</summary>
+        public event Action<bool, StageResult> GameEnded;
 
         /// <summary>메인 화면이나 결과 화면이 아니라 AR 게임 화면(튜토리얼 포함)이 보이는 중인지.</summary>
         public bool IsInGameplay => _phase is Phase.Tutorial or Phase.Playing or Phase.StageEnding;
@@ -74,9 +82,12 @@ namespace BeOdysseus
 
         private void Start() => ShowMainMenu();
 
-        /// <summary>게임을 멈추고 메인 화면으로 돌아간다.</summary>
-        public void ShowMainMenu()
+        /// <summary>게임을 멈추고 메인 화면으로 돌아간다. 게임 도중이었으면 GameEnded(중간에 나감)를 알린다.</summary>
+        public void ShowMainMenu() => ShowMainMenu(completed: false);
+
+        private void ShowMainMenu(bool completed)
         {
+            bool wasInGame = _phase != Phase.MainMenu;
             StopGameplay();
             _stageRun = null;
             _gameplayHud.SetActive(false);
@@ -84,6 +95,7 @@ namespace BeOdysseus
             _resultView.Hide();
             _mainMenu.Show();
             _phase = Phase.MainMenu;
+            if (wasInGame) GameEnded?.Invoke(completed, StageResult.FromShots(_stageIndex + 1, false, _allShots));
         }
 
         private void OnStartPressed()
@@ -94,6 +106,7 @@ namespace BeOdysseus
             Score = 0;
             _stageIndex = 0;
             _stageRun = null;
+            GameStarted?.Invoke();
             BeginTutorial();
         }
 
@@ -181,6 +194,7 @@ namespace BeOdysseus
             _shotJudge.IsArmed = true;
             _stageHud.Show(_stageRun);
             _phase = Phase.Playing;
+            StageStarted?.Invoke(_stageRun, CurrentStage);
         }
 
         private void OnShotResolved(ShotResult result)
@@ -197,6 +211,7 @@ namespace BeOdysseus
 
             _allShots.Add(result);
             _stageRun.Record(result, killed);
+            ShotRecorded?.Invoke(result, _stageRun, killed);
             _stageHud.Show(_stageRun);
             if (_stageRun.IsOver) EndStage();
         }
@@ -228,7 +243,7 @@ namespace BeOdysseus
             _resultView.Hide();
             if (_stageIndex + 1 >= _stages.Count)
             {
-                ShowMainMenu();
+                ShowMainMenu(completed: true);
                 return;
             }
 

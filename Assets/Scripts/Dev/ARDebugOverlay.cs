@@ -8,6 +8,7 @@ namespace BeOdysseus.Dev
     /// 개발용 진단 표시. 화면 왼쪽 아래에 글자로 띄운다(위쪽의 안내 상자·스테이지 표시와 겹치지 않게).
     /// - AR 세션 상태, 추적이 안 되는 이유, 카메라 위치·회전, FPS
     /// - 가속도: 크기(가만히 있으면 약 1g), 지금 충격, 최근 2초 최고 충격, 발사 기준값, 센서 측정 빈도
+    /// - 태블릿 연결 상태와 받았다는 답을 아직 못 받은 게임 기록 수
     /// - 점수와 마지막 발사 판정
     /// </summary>
     public class ARDebugOverlay : MonoBehaviour
@@ -16,6 +17,7 @@ namespace BeOdysseus.Dev
         [SerializeField] private GameConfig _config;
         [SerializeField] private AccelerometerShotDetector _accelerometer;
         [SerializeField] private GameFlow _game;
+        [SerializeField] private TabletLink _tabletLink;
         [SerializeField] private int _fontSize = 26;
         [SerializeField] private Color _textColor = Color.yellow;
 
@@ -42,6 +44,7 @@ namespace BeOdysseus.Dev
             _text.Clear();
             AppendTracking();
             AppendAccelerometer();
+            AppendTablet();
             AppendShots();
 
             var content = new GUIContent(_text.ToString());
@@ -76,6 +79,14 @@ namespace BeOdysseus.Dev
                  .Append("  fire>=").Append(_config.ShotAccelerationThreshold.ToString("F2")).Append("g\n");
             _text.Append("sensor: ").Append(_accelerometer.SamplesPerSecond.ToString("F0")).Append("Hz (req ")
                  .Append(_accelerometer.RequestedHz.ToString("F0")).Append("Hz)\n");
+        }
+
+        private void AppendTablet()
+        {
+            if (_tabletLink == null) return;
+            _text.Append("tablet: ").Append(_tabletLink.State);
+            if (_tabletLink.PendingCount > 0) _text.Append("  unacked: ").Append(_tabletLink.PendingCount);
+            _text.Append('\n');
         }
 
         private void AppendShots()
