@@ -36,7 +36,10 @@ namespace BeOdysseus
             public const string StageEnd = "stage_end";
             public const string GameEnd = "game_end";
 
-            // 태블릿이 보내는 답. 태블릿 쪽 형식이 정해지기 전까지 쓰는 임시 이름이다(TabletReply 참고).
+            // 태블릿이 보내는 신호.
+            /// <summary>태블릿에 코드를 입력하면 보내는 연결 요청(태블릿 쪽 형식, 2026-10-07 확인): type, from, seq, session, code.</summary>
+            public const string PairRequest = "pair_request";
+            // 아래는 태블릿 형식을 아직 받지 못해 쓰는 임시 이름이다(TabletReply 참고). pair_accept는 pair_request와 같게 처리한다.
             public const string PairAccept = "pair_accept";
             public const string HelloAck = "hello_ack";
             public const string Ack = "ack";
@@ -129,9 +132,9 @@ namespace BeOdysseus
     }
 
     /// <summary>
-    /// 태블릿이 보내는 답(연결 수락 pair_accept, 다시 연결 hello_ack, 받았음 ack, ping).
-    /// 태블릿 쪽 형식은 상아 님이 정해 알려 주기로 했다. 그 전까지는 이 임시 모양으로 읽고, 형식이 오면 여기와
-    /// TabletLink.HandleReply만 맞추면 된다.
+    /// 태블릿이 보내는 신호. 연결 요청(pair_request)은 태블릿 쪽 형식대로 읽는다.
+    /// 나머지(다시 연결 hello_ack, 받았음 ack, ping, unpair)는 태블릿 쪽 형식을 아직 받지 못해 임시 모양으로 읽는다.
+    /// 형식이 오면 여기와 TabletLink.HandleReply만 맞추면 된다.
     /// </summary>
     [Serializable]
     public class TabletReply : LinkMessage

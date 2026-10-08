@@ -23,10 +23,13 @@ namespace BeOdysseus
     /// <summary>
     /// 폰 → 태블릿 UDP 연결. 규격은 docs/TABLET_LINK_PROTOCOL.md.
     /// - 연결: 4자리 코드를 만들고, 태블릿이 그 코드를 입력할 때까지 0.5초마다 pair_offer를 브로드캐스트한다.
+    ///   태블릿이 입력한 코드로 pair_request를 보내면 코드·session을 확인하고 pair_confirm으로 수락한다.
     /// - 유지: 1초마다 ping. 태블릿이 ping을 보내는 경우 3초 동안 아무 메시지가 없으면 끊긴 것으로 보고,
     ///   저장해 둔 짝을 hello로 다시 찾는다.
     /// - 게임 기록은 태블릿이 받았다는 답을 줄 때까지 0.25초마다 최대 8번 다시 보낸다(seq는 그대로).
     /// - seq는 앱을 다시 켜도 이어서 올라간다.
+    /// - 받는 포트(47800)를 못 열면(이전 실행이 아직 잡고 있는 등) 1초마다 다시 연다.
+    /// - 태블릿에서 온 신호는 형식이 달라도 전부 로그에 남기고, 연결 창에 보여 줄 문제(포트·보내기 실패)를 Problem으로 알린다.
     /// 소켓 수신은 별도 스레드에서 하고, 처리는 전부 메인 스레드(Update)에서 한다.
     /// </summary>
     public class TabletLink : MonoBehaviour
@@ -40,6 +43,8 @@ namespace BeOdysseus
         private const int SeqReserveBlock = 100;
         // 태블릿이 계속 없을 때 보낼 메시지가 끝없이 쌓이지 않게 하는 상한.
         private const int MaxPending = 100;
+        // 받는 포트를 못 열었을 때 다시 여는 간격(초).
+        private const float SocketRetrySeconds = 1f;
 
         private class PendingSend
         {
@@ -66,6 +71,10 @@ namespace BeOdysseus
         private float _nextOfferTime;
         private float _nextHelloTime;
         private float _nextPingTime;
+        private float _nextSocketRetryTime;
+        private string _socketError;
+        private string _sendError;
+        private string _sendErrorReason;
 
         public TabletLinkState State { get; private set; }
         public bool IsConnected => State == TabletLinkState.Connected;
@@ -73,6 +82,14 @@ namespace BeOdysseus
         public string TabletDevice { get; private set; }
         /// <summary>받았다는 답을 아직 못 받은 게임 기록 수.</summary>
         public int PendingCount => _pending.Count;
+        /// <summary>태블릿에서 마지막으로 받은 신호(type과 보낸 주소). 아직 없으면 null.</summary>
+        public string LastReceived { get; private set; }
+
+        /// <summary>연결 창에 보여 줄 문제(창 폭에 맞게 짧게). 없으면 null.</summary>
+        public string Problem =>
+            _socket == null ? "포트를 열지 못했어요. 게임을 껐다 켜 주세요"
+            : _sendError != null ? $"보내기 실패: {_sendErrorReason}"
+            : null;
 
         private void OnEnable()
         {
@@ -140,9 +157,10 @@ namespace BeOdysseus
 
         private void Update()
         {
+            float now = Time.unscaledTime;
+            if (_socket == null && now >= _nextSocketRetryTime) OpenSocket();
             while (_inbox.TryDequeue(out var item)) HandleReply(item.Json, item.From);
 
-            float now = Time.unscaledTime;
             switch (State)
             {
                 case TabletLinkState.Pairing:
@@ -183,8 +201,9 @@ namespace BeOdysseus
         }
 
         /// <summary>
-        /// 태블릿이 보낸 답을 처리한다. 태블릿 → 폰 형식은 태블릿 쪽에서 정하기로 해서, 지금은 임시 형식
-        /// (pair_accept / hello_ack / ack / ping / unpair, from = "tablet")으로 읽는다. 형식이 오면 여기를 맞춘다.
+        /// 태블릿이 보낸 신호를 처리한다. 태블릿 → 폰 형식은 태블릿 쪽에서 정한다.
+        /// 연결 요청(pair_request)은 태블릿 형식 그대로, 나머지(hello_ack / ack / ping / unpair, from = "tablet")는
+        /// 아직 형식을 받지 못해 임시 형식으로 읽는다. 받은 신호는 형식이 달라도 전부 로그에 남긴다.
         /// </summary>
         private void HandleReply(string json, IPEndPoint from)
         {
@@ -195,14 +214,25 @@ namespace BeOdysseus
             }
             catch (Exception)
             {
+                reply = null;
+            }
+
+            // 1초마다 오는 ping은 처음 한 번만 남긴다.
+            bool repeatedPing = reply?.type == LinkProtocol.Types.Ping && _tabletSendsPing;
+            if (!repeatedPing) Debug.Log($"[TabletLink] 받음 {from}: {json}");
+            if (reply == null || string.IsNullOrEmpty(reply.type))
+            {
+                Debug.LogWarning($"[TabletLink] 알아볼 수 없는 신호라 무시함 ({from})");
                 return;
             }
-            if (reply == null || reply.from != "tablet") return;
+            if (reply.from != "tablet") return;
+            LastReceived = $"{reply.type} ← {from.Address}";
 
             switch (reply.type)
             {
+                case LinkProtocol.Types.PairRequest:
                 case LinkProtocol.Types.PairAccept:
-                    OnPairAccept(reply, from);
+                    OnPairRequest(reply, from);
                     return;
                 case LinkProtocol.Types.HelloAck:
                     OnHelloAck(reply, from);
@@ -230,17 +260,32 @@ namespace BeOdysseus
                     Debug.Log("[TabletLink] 태블릿이 연결을 해제함");
                     Unpair();
                     break;
+                default:
+                    Debug.LogWarning($"[TabletLink] 모르는 type이라 무시함: {reply.type}");
+                    break;
             }
         }
 
-        private void OnPairAccept(TabletReply reply, IPEndPoint from)
+        /// <summary>태블릿이 코드를 입력해 보낸 연결 요청. 코드·session이 맞으면 pair_confirm으로 수락한다.</summary>
+        private void OnPairRequest(TabletReply reply, IPEndPoint from)
         {
-            if (State != TabletLinkState.Pairing || reply.code != _code || reply.session != _session) return;
+            // 이미 이 태블릿과 연결됐는데 또 오면 앞의 수락이 중간에 빠졌을 수 있으니 수락을 다시 보낸다.
+            if (State == TabletLinkState.Connected && reply.session == _session)
+            {
+                SendRaw(Prepare(new LinkMessage { type = LinkProtocol.Types.PairConfirm }), _tablet);
+                return;
+            }
+            if (State != TabletLinkState.Pairing || reply.code != _code || reply.session != _session)
+            {
+                Debug.LogWarning($"[TabletLink] 연결 요청을 받았지만 맞지 않아 무시함: 상태 {State}, " +
+                                 $"code {reply.code}(화면 {_code}), session {reply.session}(폰 {_session})");
+                return;
+            }
             _tablet = new IPEndPoint(from.Address, reply.port > 0 ? reply.port : LinkProtocol.TabletPort);
             SetConnected(reply.device);
             SendRaw(Prepare(new LinkMessage { type = LinkProtocol.Types.PairConfirm }), _tablet);
             Save();
-            Debug.Log($"[TabletLink] 연결 완료: {reply.device} {_tablet}");
+            Debug.Log($"[TabletLink] 연결 완료: {_tablet}{(string.IsNullOrEmpty(reply.device) ? "" : $" ({reply.device})")}");
         }
 
         private void OnHelloAck(TabletReply reply, IPEndPoint from)
@@ -349,17 +394,27 @@ namespace BeOdysseus
 
         private void OpenSocket()
         {
+            _nextSocketRetryTime = Time.unscaledTime + SocketRetrySeconds;
+            UdpClient socket;
             try
             {
-                _socket = new UdpClient(new IPEndPoint(IPAddress.Any, LinkProtocol.PhonePort)) { EnableBroadcast = true };
-                _running = true;
-                _receiveThread = new Thread(ReceiveLoop) { IsBackground = true, Name = "TabletLink" };
-                _receiveThread.Start();
+                socket = new UdpClient(new IPEndPoint(IPAddress.Any, LinkProtocol.PhonePort)) { EnableBroadcast = true };
             }
             catch (SocketException e)
             {
-                Debug.LogWarning($"[TabletLink] 포트 {LinkProtocol.PhonePort}을 열지 못함: {e.Message}");
+                // 이전 실행이 아직 포트를 잡고 있는 등. Update에서 1초마다 다시 연다. 같은 오류는 한 번만 남긴다.
+                if (_socketError != e.Message)
+                    Debug.LogWarning($"[TabletLink] 포트 {LinkProtocol.PhonePort}을 열지 못함(1초마다 다시 시도): {e.Message}");
+                _socketError = e.Message;
+                return;
             }
+
+            if (_socketError != null) Debug.Log($"[TabletLink] 포트 {LinkProtocol.PhonePort}을 열었음");
+            _socketError = null;
+            _socket = socket;
+            _running = true;
+            _receiveThread = new Thread(() => ReceiveLoop(socket)) { IsBackground = true, Name = "TabletLink" };
+            _receiveThread.Start();
         }
 
         private void CloseSocket()
@@ -369,14 +424,15 @@ namespace BeOdysseus
             _socket = null;
         }
 
-        private void ReceiveLoop()
+        /// <summary>받기 전용 스레드. 자기 소켓만 쓰므로, 소켓이 닫히면 끝난다.</summary>
+        private void ReceiveLoop(UdpClient socket)
         {
             while (_running)
             {
                 try
                 {
                     var remote = new IPEndPoint(IPAddress.Any, 0);
-                    byte[] data = _socket.Receive(ref remote);
+                    byte[] data = socket.Receive(ref remote);
                     _inbox.Enqueue((Encoding.UTF8.GetString(data), remote));
                 }
                 catch (SocketException)
@@ -394,28 +450,63 @@ namespace BeOdysseus
         private void SendRaw(string json, IPEndPoint to)
         {
             if (_socket == null || to == null) return;
+            if (TrySend(json, to, out string error)) _sendError = null;
+            else ReportSendError(to, error);
+        }
+
+        private bool TrySend(string json, IPEndPoint to, out string error)
+        {
             byte[] bytes = Encoding.UTF8.GetBytes(json);
             try
             {
                 _socket.Send(bytes, bytes.Length, to);
+                error = null;
+                return true;
             }
             catch (SocketException e)
             {
-                Debug.LogWarning($"[TabletLink] 보내기 실패({to}): {e.Message}");
+                error = e.Message;
+                return false;
             }
+        }
+
+        /// <summary>보내기 실패를 기록한다. 0.5초마다 같은 오류가 쌓이지 않게, 오류가 바뀔 때만 로그에 남긴다.</summary>
+        private void ReportSendError(IPEndPoint to, string error)
+        {
+            string message = $"{to}: {error}";
+            if (message != _sendError) Debug.LogWarning($"[TabletLink] 보내기 실패({message})");
+            _sendError = message;
+            _sendErrorReason = error;
         }
 
         /// <summary>
         /// 같은 네트워크 전체에 보낸다. 핫스팟에 따라 받히는 주소가 달라서 255.255.255.255와
-        /// 이 기기 네트워크의 브로드캐스트 주소(끝자리 255) 두 곳으로 보낸다.
+        /// 이 기기 네트워크의 브로드캐스트 주소(끝자리 255) 두 곳으로 보낸다. 한 곳이라도 나가면 성공으로 본다.
         /// </summary>
         private void Broadcast(string json)
         {
-            SendRaw(json, new IPEndPoint(IPAddress.Broadcast, LinkProtocol.TabletPort));
+            if (_socket == null) return;
+            var targets = new List<IPEndPoint> { new(IPAddress.Broadcast, LinkProtocol.TabletPort) };
             IPAddress subnetBroadcast = GuessSubnetBroadcast();
-            if (subnetBroadcast != null) SendRaw(json, new IPEndPoint(subnetBroadcast, LinkProtocol.TabletPort));
+            if (subnetBroadcast != null) targets.Add(new IPEndPoint(subnetBroadcast, LinkProtocol.TabletPort));
             // 에디터에서는 같은 PC에서 돌리는 가짜 태블릿으로도 보낸다.
-            if (Application.isEditor) SendRaw(json, new IPEndPoint(IPAddress.Loopback, LinkProtocol.TabletPort));
+            if (Application.isEditor) targets.Add(new IPEndPoint(IPAddress.Loopback, LinkProtocol.TabletPort));
+
+            IPEndPoint failedTarget = null;
+            string failedError = null;
+            bool anySent = false;
+            foreach (IPEndPoint target in targets)
+            {
+                if (TrySend(json, target, out string error)) anySent = true;
+                else if (failedTarget == null)
+                {
+                    failedTarget = target;
+                    failedError = error;
+                }
+            }
+
+            if (anySent) _sendError = null;
+            else ReportSendError(failedTarget, failedError);
         }
 
         /// <summary>이 기기의 IPv4 주소 끝자리를 255로 바꾼 주소(예: 192.168.43.17 → 192.168.43.255).</summary>

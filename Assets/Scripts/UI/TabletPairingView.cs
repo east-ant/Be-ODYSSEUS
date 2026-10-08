@@ -12,7 +12,8 @@ namespace BeOdysseus
     {
         private const float AutoCloseSeconds = 1.5f;
         private static readonly Color ConnectedColor = new(1f, 0.82f, 0.25f);
-        private static readonly Color NormalColor = new(1f, 0.92f, 0.7f);
+        // "게임 시작" 버튼 글씨와 같은 색(#FFD869).
+        private static readonly Color NormalColor = new(1f, 0.847f, 0.412f);
 
         [SerializeField] private TabletLink _link;
         [SerializeField] private Button _openButton;
@@ -74,21 +75,23 @@ namespace BeOdysseus
                 case TabletLinkState.Pairing:
                     _code.text = _link.PairingCode;
                     _guide.text = "태블릿 앱에 이 코드를 입력하세요";
-                    _status.text = "태블릿을 기다리는 중…";
+                    // 문제(포트·보내기 실패)가 있으면 그걸, 태블릿에서 무언가 왔으면 그걸 보여 준다.
+                    _status.text = _link.Problem
+                        ?? (_link.LastReceived != null ? $"받은 신호: {_link.LastReceived}" : "태블릿을 기다리는 중…");
                     _unpairButton.gameObject.SetActive(false);
                     break;
 
                 case TabletLinkState.Connected:
                     _code.text = "연결됨";
                     _guide.text = string.IsNullOrEmpty(_link.TabletDevice) ? "태블릿과 연결되었습니다" : $"태블릿: {_link.TabletDevice}";
-                    _status.text = "";
+                    _status.text = _link.Problem ?? "";
                     _unpairButton.gameObject.SetActive(true);
                     break;
 
                 case TabletLinkState.Reconnecting:
                     _code.text = "…";
                     _guide.text = "연결했던 태블릿을 다시 찾는 중이에요";
-                    _status.text = "태블릿 앱이 켜져 있고 같은 와이파이인지 확인하세요";
+                    _status.text = _link.Problem ?? "태블릿 앱이 켜져 있고 같은 와이파이인지 확인하세요";
                     _unpairButton.gameObject.SetActive(true);
                     break;
             }
