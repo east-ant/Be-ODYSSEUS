@@ -32,6 +32,8 @@ namespace BeOdysseus
 
         private void EnsureArrowCount(int count)
         {
+            // 에디터 화면 미리보기가 끝나면 복제한 화살을 지우므로, 지워진 것은 목록에서 뺀다.
+            _arrows.RemoveAll(arrow => arrow == null);
             if (_arrows.Count == 0) _arrows.Add(_arrowTemplate);
             while (_arrows.Count < count)
                 _arrows.Add(Instantiate(_arrowTemplate, _arrowTemplate.transform.parent));

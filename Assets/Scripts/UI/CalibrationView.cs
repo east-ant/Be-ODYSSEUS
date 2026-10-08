@@ -6,7 +6,7 @@ namespace BeOdysseus
 {
     /// <summary>
     /// 튜토리얼(중앙점 정하기) 화면. AR 화면 위쪽에 안내 문구, 아래쪽에 "방향 정하기" 버튼을 띄운다.
-    /// 중앙점은 이 화면에서만 정할 수 있다.
+    /// 중앙점은 이 화면에서만 정할 수 있다. 버튼 대신 활을 쏴도 된다(GameFlow).
     /// </summary>
     public class CalibrationView : MonoBehaviour
     {
@@ -31,7 +31,7 @@ namespace BeOdysseus
             Show(AskTitle, "AR 준비 중… 주변을 천천히 비춰 주세요", "방향 정하기", false);
 
         public void ShowReady() =>
-            Show(AskTitle, "화면 가운데 조준점을 쏠 방향에 맞추고 버튼을 누르세요", "방향 정하기", true);
+            Show(AskTitle, "조준점을 쏠 방향에 맞추고 활을 쏘거나 버튼을 누르세요", "방향 정하기", true);
 
         /// <summary>중앙점을 정한 뒤 스테이지 시작까지 세는 동안. 버튼을 다시 누르면 다시 정한다.</summary>
         public void ShowConfirmed(int stageNumber, int secondsLeft) =>

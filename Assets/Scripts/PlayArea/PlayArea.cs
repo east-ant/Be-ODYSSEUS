@@ -31,6 +31,9 @@ namespace BeOdysseus
             DrawFrame();
         }
 
+        /// <summary>범위는 그대로 두고 테두리만 숨긴다. 방향을 정할 때만 보여 주고 스테이지에서는 숨긴다.</summary>
+        public void HideFrame() => _frame.enabled = false;
+
         public void Clear()
         {
             IsSet = false;

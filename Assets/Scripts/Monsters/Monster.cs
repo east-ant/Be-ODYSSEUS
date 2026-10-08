@@ -195,6 +195,8 @@ namespace BeOdysseus
 
             _hurtSeconds = HasHitFrames ? _animation.HitFrames.Length / _animation.HitFramesPerSecond : HurtSeconds;
             _hurtLeft = _hurtSeconds;
+            // 떠 있다가 맞은 Swoop 몬스터는 맞는 동작이 끝나자마자 다른 자리로 날아간다.
+            if (IsSwooping && _motion == Motion.Resting) _restLeft = 0f;
             return false;
         }
 

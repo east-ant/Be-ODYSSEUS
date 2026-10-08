@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.LowLevel;
 
 namespace BeOdysseus
 {
@@ -10,11 +11,14 @@ namespace BeOdysseus
     /// 메인 화면 → 튜토리얼(중앙점 정하기) → 스테이지(화살 3발, 60초) → 결과 화면(카운트다운) → 다음 스테이지 … → 메인 화면.
     /// 중앙점은 튜토리얼에서만 정할 수 있고, 스테이지와 결과 화면에서는 바꿀 수 없다.
     /// 몬스터를 쓰러뜨리면(체력을 다 깎으면) 클리어, 화살을 다 쓰거나 시간이 다 되면 실패. 실패해도 결과를 보여 주고 다음으로 넘어간다.
+    /// AR 게임 화면(튜토리얼 포함)에서는 잠깐 정지할 수 있다. 정지하면 Time.timeScale을 0으로 해서 남은 시간·몬스터·효과를 멈추고,
+    /// 그동안 쏜 화살은 무시한다.
     /// </summary>
     public class GameFlow : MonoBehaviour
     {
-        private const string NextStageLabel = "다음 스테이지";
-        private const string BackToMenuLabel = "메인 화면으로";
+        /// <summary>결과 화면 카운트다운 옆 글씨. 에디터 화면 미리보기에서도 쓴다.</summary>
+        public const string NextStageLabel = "다음 스테이지";
+        public const string BackToMenuLabel = "메인 화면으로";
 
         private enum Phase { MainMenu, Tutorial, Playing, StageEnding, Result }
 
@@ -38,6 +42,8 @@ namespace BeOdysseus
         private Monster _monster;
         private bool _isCenterSet;
         private float _tutorialLeft;
+        // 튜토리얼이 시작된 입력 시각. 이보다 앞서 들어온 발사 신호로는 방향을 정하지 않는다.
+        private double _tutorialStartInputTime;
         private int _stageIndex;
         private StageRun _stageRun;
         private StageResult _lastStageResult;
@@ -56,6 +62,8 @@ namespace BeOdysseus
 
         /// <summary>메인 화면이나 결과 화면이 아니라 AR 게임 화면(튜토리얼 포함)이 보이는 중인지.</summary>
         public bool IsInGameplay => _phase is Phase.Tutorial or Phase.Playing or Phase.StageEnding;
+        /// <summary>정지 버튼으로 잠깐 멈춘 중인지.</summary>
+        public bool IsPaused { get; private set; }
         /// <summary>게임 시작부터 지금까지의 점수(명중 1발당 1점).</summary>
         public int Score { get; private set; }
         public int ShotsFired => _allShots.Count;
@@ -69,6 +77,7 @@ namespace BeOdysseus
             _mainMenu.StartPressed += OnStartPressed;
             _calibrationView.ButtonPressed += OnCenterButtonPressed;
             _shotJudge.Resolved += OnShotResolved;
+            _shotJudge.DisarmedShot += OnDisarmedShot;
             _resultView.CountdownFinished += OnResultCountdownFinished;
         }
 
@@ -77,6 +86,7 @@ namespace BeOdysseus
             _mainMenu.StartPressed -= OnStartPressed;
             _calibrationView.ButtonPressed -= OnCenterButtonPressed;
             _shotJudge.Resolved -= OnShotResolved;
+            _shotJudge.DisarmedShot -= OnDisarmedShot;
             _resultView.CountdownFinished -= OnResultCountdownFinished;
         }
 
@@ -85,9 +95,33 @@ namespace BeOdysseus
         /// <summary>게임을 멈추고 메인 화면으로 돌아간다. 게임 도중이었으면 GameEnded(중간에 나감)를 알린다.</summary>
         public void ShowMainMenu() => ShowMainMenu(completed: false);
 
+        /// <summary>게임을 잠깐 멈춘다. AR 게임 화면에서만 된다.</summary>
+        public void Pause()
+        {
+            if (!IsInGameplay || IsPaused) return;
+            IsPaused = true;
+            Time.timeScale = 0f;
+            _shotJudge.IsArmed = false;
+        }
+
+        /// <summary>멈춘 게임을 이어서 한다. 화살은 스테이지 진행 중일 때만 다시 받는다.</summary>
+        public void Resume()
+        {
+            if (!IsPaused) return;
+            ClearPause();
+            _shotJudge.IsArmed = _phase == Phase.Playing;
+        }
+
+        private void ClearPause()
+        {
+            IsPaused = false;
+            Time.timeScale = 1f;
+        }
+
         private void ShowMainMenu(bool completed)
         {
             bool wasInGame = _phase != Phase.MainMenu;
+            ClearPause();
             StopGameplay();
             _stageRun = null;
             _gameplayHud.SetActive(false);
@@ -115,6 +149,7 @@ namespace BeOdysseus
             StopGameplay();
             _stageHud.Hide();
             _isCenterSet = false;
+            _tutorialStartInputTime = InputState.currentTime;
             _phase = Phase.Tutorial;
         }
 
@@ -132,6 +167,7 @@ namespace BeOdysseus
                 ShowMainMenu();
                 return;
             }
+            if (IsPaused) return;
 
             switch (_phase)
             {
@@ -178,11 +214,23 @@ namespace BeOdysseus
             BeginStage();
         }
 
+        private bool CanSetCenter => _phase == Phase.Tutorial && !IsPaused && AimTracking.IsReliable;
+
         /// <summary>튜토리얼의 "방향 정하기"/"다시 정하기" 버튼. 지금 겨눈 방향을 중앙점으로 정하고 범위를 보여 준다.</summary>
         private void OnCenterButtonPressed()
         {
-            if (_phase != Phase.Tutorial || !AimTracking.IsReliable) return;
-            _playArea.SetFront(_calibrator.CaptureFront());
+            if (CanSetCenter) SetCenter(_calibrator.CaptureFront());
+        }
+
+        /// <summary>튜토리얼에서 활을 쏘면 버튼을 누른 것과 같다. 충격 직전(발사 판정과 같은 시각)에 겨눈 방향을 쓴다.</summary>
+        private void OnDisarmedShot(ShotEvent shot)
+        {
+            if (CanSetCenter && shot.Time > _tutorialStartInputTime) SetCenter(_calibrator.CaptureFrontAt(shot.Time - _config.ShotAimLookbackSeconds));
+        }
+
+        private void SetCenter(Pose front)
+        {
+            _playArea.SetFront(front);
             _isCenterSet = true;
             _tutorialLeft = _config.TutorialConfirmSeconds;
         }
@@ -190,6 +238,7 @@ namespace BeOdysseus
         private void BeginStage()
         {
             _stageRun = new StageRun(_stageIndex + 1, _config.ArrowsPerStage, _config.StageTimeLimitSeconds);
+            _playArea.HideFrame();
             ShowMonster(CurrentStage);
             _shotJudge.IsArmed = true;
             _stageHud.Show(_stageRun);

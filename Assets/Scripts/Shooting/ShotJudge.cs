@@ -48,6 +48,8 @@ namespace BeOdysseus
         private double _lastAcceptedTime = double.NegativeInfinity;
 
         public event Action<ShotResult> Resolved;
+        /// <summary>판정하지 않는 동안(IsArmed가 false) 들어온 발사 신호. 튜토리얼에서 "방향 정하기" 대신 쓴다.</summary>
+        public event Action<ShotEvent> DisarmedShot;
 
         /// <summary>false면 발사 신호를 무시한다. 게임 진행이 정한다.</summary>
         public bool IsArmed { get; set; }
@@ -72,8 +74,14 @@ namespace BeOdysseus
             while (_pending.Count > 0)
             {
                 ShotEvent shot = _pending.Dequeue();
-                if (!IsArmed) continue;
                 if (shot.Time - _lastAcceptedTime < _config.ShotCooldownSeconds) continue;
+                if (!IsArmed)
+                {
+                    // 한 번 쏠 때 충격이 여러 번 튀어도 한 번만 알리도록 대기 시간은 똑같이 적용한다.
+                    _lastAcceptedTime = shot.Time;
+                    DisarmedShot?.Invoke(shot);
+                    continue;
+                }
                 if (!_aimHistory.TryGetAtOrBefore(shot.Time - _config.ShotAimLookbackSeconds, out AimSample aim)) continue;
 
                 _lastAcceptedTime = shot.Time;

@@ -47,9 +47,11 @@ namespace BeOdysseus
 
         public event Action CountdownFinished;
 
-        private void Awake()
+        private void Awake() => CacheMonsterBox();
+
+        /// <summary>씬에서 정한 몬스터 칸(크기, 바닥 가운데 위치)을 기억해 둔다.</summary>
+        private void CacheMonsterBox()
         {
-            // 씬에서 정한 몬스터 칸(크기, 바닥 가운데 위치)을 기억해 둔다.
             _monsterRect = _monster.rectTransform;
             _monsterBoxSize = _monsterRect.sizeDelta;
             _monsterBasePosition = _monsterRect.anchoredPosition;
@@ -57,6 +59,8 @@ namespace BeOdysseus
 
         public void Show(StageResult result, StageDefinition stage, string countdownLabel, float countdownSeconds)
         {
+            // 에디터 화면 미리보기(플레이 전)에서는 Awake가 불리지 않으니, 지금 씬에 놓인 칸을 그때그때 읽는다.
+            if (!Application.isPlaying) CacheMonsterBox();
             _background.sprite = stage.ResultBackground;
             ShowMonster(stage);
 

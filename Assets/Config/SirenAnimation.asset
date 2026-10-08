@@ -77,8 +77,8 @@ MonoBehaviour:
   _moveSpeedScale: 1
   _floatCycleSeconds: 3
   _floatHeight01: 1
-  _swoopHoverMinSeconds: 2
-  _swoopHoverMaxSeconds: 3
+  _swoopHoverMinSeconds: 1
+  _swoopHoverMaxSeconds: 1.5
   _swoopFlightSeconds: 1
   _swoopMinJump01: 0.35
   _swoopTrailSprites:

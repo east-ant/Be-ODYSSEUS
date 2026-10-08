@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: GameConfig
   m_EditorClassIdentifier: Assembly-CSharp::BeOdysseus.GameConfig
   _centerCaptureLookbackSeconds: 0.3
-  _tutorialConfirmSeconds: 3
+  _tutorialConfirmSeconds: 4
   _areaHalfWidthDegrees: 26
   _areaHalfHeightDegrees: 13
-  _areaDistanceMeters: 3
+  _areaDistanceMeters: 3.5
   _monsterHeightMeters: 0.5
   _monsterMoveSpeedDegrees: 6
   _monsterRestSeconds: 1.5
