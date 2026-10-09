@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Net;
+using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
@@ -24,6 +25,7 @@ namespace BeOdysseus
     /// 폰 → 태블릿 UDP 연결. 규격은 docs/TABLET_LINK_PROTOCOL.md.
     /// - 연결: 4자리 코드를 만들고, 태블릿이 그 코드를 입력할 때까지 0.5초마다 pair_offer를 브로드캐스트한다.
     ///   태블릿이 입력한 코드로 pair_request를 보내면 코드·session을 확인하고 pair_confirm으로 수락한다.
+    ///   브로드캐스트는 이 폰이 붙어 있는 네트워크(와이파이, 이 폰이 켠 핫스팟)마다 따로 보낸다.
     /// - 유지: 1초마다 ping. 태블릿이 ping을 보내는 경우 3초 동안 아무 메시지가 없으면 끊긴 것으로 보고,
     ///   저장해 둔 짝을 hello로 다시 찾는다.
     /// - 게임 기록은 태블릿이 받았다는 답을 줄 때까지 0.25초마다 최대 8번 다시 보낸다(seq는 그대로).
@@ -45,6 +47,8 @@ namespace BeOdysseus
         private const int MaxPending = 100;
         // 받는 포트를 못 열었을 때 다시 여는 간격(초).
         private const float SocketRetrySeconds = 1f;
+        // 네트워크(핫스팟 켜고 끄기, 와이파이 바꾸기)를 다시 찾는 간격(초).
+        private const float NetworkScanSeconds = 2f;
 
         private class PendingSend
         {
@@ -75,6 +79,9 @@ namespace BeOdysseus
         private string _socketError;
         private string _sendError;
         private string _sendErrorReason;
+        private readonly List<IPAddress> _broadcastAddresses = new();
+        private float _nextNetworkScanTime;
+        private string _broadcastSummary;
 
         public TabletLinkState State { get; private set; }
         public bool IsConnected => State == TabletLinkState.Connected;
@@ -481,14 +488,14 @@ namespace BeOdysseus
 
         /// <summary>
         /// 같은 네트워크 전체에 보낸다. 핫스팟에 따라 받히는 주소가 달라서 255.255.255.255와
-        /// 이 기기 네트워크의 브로드캐스트 주소(끝자리 255) 두 곳으로 보낸다. 한 곳이라도 나가면 성공으로 본다.
+        /// 이 기기가 붙어 있는 네트워크마다의 브로드캐스트 주소로 보낸다. 한 곳이라도 나가면 성공으로 본다.
         /// </summary>
         private void Broadcast(string json)
         {
             if (_socket == null) return;
             var targets = new List<IPEndPoint> { new(IPAddress.Broadcast, LinkProtocol.TabletPort) };
-            IPAddress subnetBroadcast = GuessSubnetBroadcast();
-            if (subnetBroadcast != null) targets.Add(new IPEndPoint(subnetBroadcast, LinkProtocol.TabletPort));
+            foreach (IPAddress address in NetworkBroadcastAddresses())
+                targets.Add(new IPEndPoint(address, LinkProtocol.TabletPort));
             // 에디터에서는 같은 PC에서 돌리는 가짜 태블릿으로도 보낸다.
             if (Application.isEditor) targets.Add(new IPEndPoint(IPAddress.Loopback, LinkProtocol.TabletPort));
 
@@ -507,6 +514,87 @@ namespace BeOdysseus
 
             if (anySent) _sendError = null;
             else ReportSendError(failedTarget, failedError);
+        }
+
+        /// <summary>
+        /// 이 기기가 붙어 있는 네트워크마다의 브로드캐스트 주소(예: 192.168.43.255).
+        /// 핫스팟을 켠 폰은 LTE와 핫스팟 두 네트워크에 붙어 있는데, 255.255.255.255나 기본 경로로 보내면
+        /// LTE 쪽으로만 나가서 핫스팟에 접속한 태블릿에 닿지 않는다. 그래서 네트워크마다 따로 보낸다.
+        /// 핫스팟을 켜고 끄거나 와이파이를 바꿀 수 있으니 2초마다 다시 찾는다. 못 찾으면 예전 방식으로 짐작한다.
+        /// </summary>
+        private List<IPAddress> NetworkBroadcastAddresses()
+        {
+            float now = Time.unscaledTime;
+            if (now < _nextNetworkScanTime) return _broadcastAddresses;
+            _nextNetworkScanTime = now + NetworkScanSeconds;
+
+            _broadcastAddresses.Clear();
+            try
+            {
+                CollectBroadcastAddresses(_broadcastAddresses);
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"[TabletLink] 네트워크 목록을 읽지 못함: {e.Message}");
+            }
+            if (_broadcastAddresses.Count == 0)
+            {
+                IPAddress guess = GuessSubnetBroadcast();
+                if (guess != null) _broadcastAddresses.Add(guess);
+            }
+
+            string summary = string.Join(", ", _broadcastAddresses);
+            if (summary != _broadcastSummary) Debug.Log($"[TabletLink] 브로드캐스트 주소: {(summary.Length > 0 ? summary : "없음")}");
+            _broadcastSummary = summary;
+            return _broadcastAddresses;
+        }
+
+#if UNITY_ANDROID && !UNITY_EDITOR
+        /// <summary>안드로이드 네트워크 목록(java.net.NetworkInterface)에서 켜져 있는 네트워크의 IPv4 브로드캐스트 주소를 모은다.</summary>
+        private static void CollectBroadcastAddresses(List<IPAddress> into)
+        {
+            using var networkInterface = new AndroidJavaClass("java.net.NetworkInterface");
+            using AndroidJavaObject interfaces = networkInterface.CallStatic<AndroidJavaObject>("getNetworkInterfaces");
+            if (interfaces == null) return;
+            while (interfaces.Call<bool>("hasMoreElements"))
+            {
+                using AndroidJavaObject nic = interfaces.Call<AndroidJavaObject>("nextElement");
+                if (!nic.Call<bool>("isUp") || nic.Call<bool>("isLoopback")) continue;
+                using AndroidJavaObject addresses = nic.Call<AndroidJavaObject>("getInterfaceAddresses");
+                int count = addresses.Call<int>("size");
+                for (int i = 0; i < count; i++)
+                {
+                    using AndroidJavaObject address = addresses.Call<AndroidJavaObject>("get", i);
+                    // LTE처럼 브로드캐스트가 없는 네트워크와 IPv6 주소는 null이다.
+                    using AndroidJavaObject broadcast = address.Call<AndroidJavaObject>("getBroadcast");
+                    if (broadcast == null) continue;
+                    if (IPAddress.TryParse(broadcast.Call<string>("getHostAddress"), out IPAddress parsed)) AddUnique(into, parsed);
+                }
+            }
+        }
+#else
+        /// <summary>PC(에디터)의 네트워크 목록에서 켜져 있는 네트워크의 IPv4 브로드캐스트 주소(주소 | ~서브넷 마스크)를 모은다.</summary>
+        private static void CollectBroadcastAddresses(List<IPAddress> into)
+        {
+            foreach (NetworkInterface nic in NetworkInterface.GetAllNetworkInterfaces())
+            {
+                if (nic.OperationalStatus != OperationalStatus.Up || nic.NetworkInterfaceType == NetworkInterfaceType.Loopback) continue;
+                foreach (UnicastIPAddressInformation info in nic.GetIPProperties().UnicastAddresses)
+                {
+                    if (info.Address.AddressFamily != AddressFamily.InterNetwork || info.IPv4Mask == null) continue;
+                    byte[] ip = info.Address.GetAddressBytes();
+                    byte[] mask = info.IPv4Mask.GetAddressBytes();
+                    if (mask.Length != 4 || mask[3] == 255) continue; // 혼자인 네트워크(점대점)는 브로드캐스트가 없다
+                    for (int i = 0; i < 4; i++) ip[i] |= (byte)~mask[i];
+                    AddUnique(into, new IPAddress(ip));
+                }
+            }
+        }
+#endif
+
+        private static void AddUnique(List<IPAddress> into, IPAddress address)
+        {
+            if (!address.Equals(IPAddress.Broadcast) && !into.Contains(address)) into.Add(address);
         }
 
         /// <summary>이 기기의 IPv4 주소 끝자리를 255로 바꾼 주소(예: 192.168.43.17 → 192.168.43.255).</summary>
