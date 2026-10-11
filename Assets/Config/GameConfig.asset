@@ -14,6 +14,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BeOdysseus.GameConfig
   _centerCaptureLookbackSeconds: 0.3
   _tutorialConfirmSeconds: 4
+  _axeTutorialEnabled: 1
+  _axeCount: 6
+  _axeNearestMeters: 2
+  _axeSpacingMeters: 0.25
+  _axeHeightMeters: 1.6
+  _axeHoleHitScale: 1
+  _axeTutorialArrows: 3
+  _axeTutorialEndSeconds: 4
   _areaHalfWidthDegrees: 26
   _areaHalfHeightDegrees: 13
   _areaDistanceMeters: 3.5
@@ -24,7 +32,7 @@ MonoBehaviour:
   _monsterRestIntervalMaxSeconds: 6
   _monsterDeathSeconds: 1.4
   _arrowsPerStage: 3
-  _stageTimeLimitSeconds: 60
+  _stageTimeLimitSeconds: 30
   _resultDelaySeconds: 1
   _resultCountdownSeconds: 5
   _accelerometerSamplingHz: 200
