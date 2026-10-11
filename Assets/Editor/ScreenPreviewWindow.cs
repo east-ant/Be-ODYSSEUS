@@ -49,6 +49,9 @@ namespace BeOdysseus.EditorTools
             Row(("게임 화면", ScreenPreview.StageKey(_stage)), ("정지 창", ScreenPreview.PauseKey(_stage)));
             Row(("결과 (클리어)", ScreenPreview.ResultKey(_stage, true)), ("결과 (실패)", ScreenPreview.ResultKey(_stage, false)));
 
+            Section("게임 끝");
+            Row(("최종 결과 (모두 클리어)", ScreenPreview.FinalResultKey(true)), ("최종 결과 (실패 있음)", ScreenPreview.FinalResultKey(false)));
+
             EditorGUILayout.Space(12);
             using (new EditorGUI.DisabledScope(ScreenPreview.CurrentKey == null))
             {

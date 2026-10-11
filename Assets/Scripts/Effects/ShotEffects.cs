@@ -4,7 +4,7 @@ using UnityEngine;
 namespace BeOdysseus
 {
     /// <summary>
-    /// 발사 판정이 나올 때마다 화살이 닿은 자리에 이펙트를 띄운다.
+    /// 화살이 닿을 때마다(ArrowFlight.Landed) 닿은 자리에 이펙트를 띄운다.
     /// 명중이면 별빛(starburst), 빗나가면 충격(impact) 이펙트.
     /// </summary>
     public class ShotEffects : MonoBehaviour
@@ -14,7 +14,7 @@ namespace BeOdysseus
         // 같은 깊이의 몬스터 이미지와 겹쳐 깜빡이지 않게 카메라 쪽으로 살짝 당기는 거리(m).
         private const float PullTowardViewerMeters = 0.05f;
 
-        [SerializeField] private ShotJudge _shotJudge;
+        [SerializeField] private ArrowFlight _arrows;
         [Tooltip("AR 카메라. 이펙트가 이쪽을 바라본다.")]
         [SerializeField] private Transform _viewer;
         [SerializeField] private Sprite _hitSprite;
@@ -28,10 +28,10 @@ namespace BeOdysseus
 
         private readonly List<FxPop> _pool = new();
 
-        private void OnEnable() => _shotJudge.Resolved += OnShotResolved;
-        private void OnDisable() => _shotJudge.Resolved -= OnShotResolved;
+        private void OnEnable() => _arrows.Landed += OnShotLanded;
+        private void OnDisable() => _arrows.Landed -= OnShotLanded;
 
-        private void OnShotResolved(ShotResult result)
+        private void OnShotLanded(ShotResult result)
         {
             Vector3 toViewer = (_viewer.position - result.ImpactPoint).normalized;
             Vector3 position = result.ImpactPoint + toViewer * PullTowardViewerMeters;

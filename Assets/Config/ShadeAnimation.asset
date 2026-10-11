@@ -46,9 +46,10 @@ MonoBehaviour:
   _deathFramesPerSecond: 8
   _deathFramesShowFall: 1
   _deathDropsToGround: 0
+  _deathDropSeconds: 0.45
   _health: 2
   _movement: 1
-  _moveSpeedScale: 0.5
+  _moveSpeedScale: 0.7
   _floatCycleSeconds: 6
   _floatHeight01: 1
   _swoopHoverMinSeconds: 2

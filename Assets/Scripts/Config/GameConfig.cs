@@ -17,6 +17,31 @@ namespace BeOdysseus
         [Tooltip("중앙점을 정한 뒤 1스테이지가 시작되기까지의 시간(초). 이 동안 범위를 확인하고 다시 정할 수 있다.")]
         [SerializeField, Min(0f)] private float _tutorialConfirmSeconds = 3f;
 
+        [Header("도끼 튜토리얼(방향 정하기 → 도끼 구멍 쏘기 → 1스테이지)")]
+        [Tooltip("끄면 방향을 정한 뒤 바로 1스테이지로 간다.")]
+        [SerializeField] private bool _axeTutorialEnabled = true;
+
+        [Tooltip("앞뒤로 세우는 도끼 쌍(엇갈린 두 자루) 수.")]
+        [SerializeField, Range(1, 12)] private int _axeCount = 6;
+
+        [Tooltip("가장 가까운 도끼 쌍까지 거리(m).")]
+        [SerializeField, Min(0.5f)] private float _axeNearestMeters = 2f;
+
+        [Tooltip("도끼 쌍 사이 앞뒤 간격(m). 넓을수록 줄이 길어져 구멍이 작게 보이고 어려워진다.")]
+        [SerializeField, Min(0.05f)] private float _axeSpacingMeters = 0.25f;
+
+        [Tooltip("도끼 쌍 그림 높이(m, 아래 손잡이 끝~위 날 끝). 클수록 구멍도 커져 쉬워진다.")]
+        [SerializeField, Min(0.1f)] private float _axeHeightMeters = 1.5f;
+
+        [Tooltip("통과로 보는 구멍 크기 배율. 1이면 그림의 두 도끼 사이 구멍 그대로(픽셀 기준), 크면 너그럽게.")]
+        [SerializeField, Range(0.5f, 2f)] private float _axeHoleHitScale = 1f;
+
+        [Tooltip("도끼 튜토리얼에서 쏠 수 있는 화살 수. 다 쓰도록 통과하지 못하면 메인 화면으로 돌아간다.")]
+        [SerializeField, Min(1)] private int _axeTutorialArrows = 3;
+
+        [Tooltip("통과/실패 문구를 보여 준 뒤 1스테이지(통과)나 메인 화면(실패)으로 넘어가기까지 시간(초).")]
+        [SerializeField, Min(0f)] private float _axeTutorialEndSeconds = 2f;
+
         [Header("몬스터 활동 범위")]
         [Tooltip("정면에서 좌우 한쪽으로 몇 도까지인지.")]
         [SerializeField, Range(1f, 60f)] private float _areaHalfWidthDegrees = 26f;
@@ -87,6 +112,14 @@ namespace BeOdysseus
 
         public float CenterCaptureLookbackSeconds => _centerCaptureLookbackSeconds;
         public float TutorialConfirmSeconds => _tutorialConfirmSeconds;
+        public bool AxeTutorialEnabled => _axeTutorialEnabled;
+        public int AxeCount => _axeCount;
+        public float AxeNearestMeters => _axeNearestMeters;
+        public float AxeSpacingMeters => _axeSpacingMeters;
+        public float AxeHeightMeters => _axeHeightMeters;
+        public float AxeHoleHitScale => _axeHoleHitScale;
+        public int AxeTutorialArrows => _axeTutorialArrows;
+        public float AxeTutorialEndSeconds => _axeTutorialEndSeconds;
         public Vector2 AreaHalfSizeDegrees => new(_areaHalfWidthDegrees, _areaHalfHeightDegrees);
         public float AreaDistanceMeters => _areaDistanceMeters;
         public float MonsterHeightMeters => _monsterHeightMeters;

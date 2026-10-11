@@ -11,7 +11,7 @@ using Object = UnityEngine.Object;
 namespace BeOdysseus.EditorTools
 {
     /// <summary>
-    /// 플레이하지 않고 게임 화면(메인, 방향 정하기, 스테이지별 게임·결과 화면, 정지 창 등)을 Game 창에 띄운다.
+    /// 플레이하지 않고 게임 화면(메인, 방향 정하기, 스테이지별 게임·결과 화면, 최종 결과, 정지 창 등)을 Game 창에 띄운다.
     /// 화면은 실제 게임 코드(StageHud.Show, ResultView.Show 등)로 채우므로 게임에서 보이는 모습과 같다.
     /// 미리보기가 바꾼 값(켜짐/꺼짐, 글자 내용, 그림 등)만 기억했다가 끝낼 때 되돌린다.
     /// 미리보는 동안 사람이 바꾼 위치·크기·글자 크기 등은 그대로 남는다.
@@ -52,6 +52,7 @@ namespace BeOdysseus.EditorTools
             public StageHud StageHud;
             public CalibrationView Calibration;
             public ResultView Result;
+            public FinalResultView FinalResult;
             public GameObject PauseButton;
             public GameObject PausePopup;
         }
@@ -91,6 +92,7 @@ namespace BeOdysseus.EditorTools
         public static string StageKey(int stage) => $"stage/{stage}";
         public static string PauseKey(int stage) => $"pause/{stage}";
         public static string ResultKey(int stage, bool cleared) => $"{(cleared ? "clear" : "fail")}/{stage}";
+        public static string FinalResultKey(bool allClear) => $"final/{(allClear ? "clear" : "fail")}";
 
         public static string Title(string key)
         {
@@ -107,6 +109,7 @@ namespace BeOdysseus.EditorTools
                 "pause" => stage + "정지 창",
                 "clear" => stage + "결과(클리어)",
                 "fail" => stage + "결과(실패)",
+                "final" => parts.Length > 1 && parts[1] == "clear" ? "최종 결과(모두 클리어)" : "최종 결과(실패 있음)",
                 _ => key,
             };
         }
@@ -205,7 +208,7 @@ namespace BeOdysseus.EditorTools
         private static void Apply(Views v, string key)
         {
             string[] parts = key.Split('/');
-            int stage = parts.Length > 1 ? Mathf.Clamp(int.Parse(parts[1]), 1, v.Stages.Count) : 1;
+            int stage = parts.Length > 1 && int.TryParse(parts[1], out int number) ? Mathf.Clamp(number, 1, v.Stages.Count) : 1;
 
             HideAll(v);
             switch (parts[0])
@@ -223,7 +226,8 @@ namespace BeOdysseus.EditorTools
                     break;
                 case "calibDone":
                     ShowGameplay(v);
-                    v.Calibration.ShowConfirmed(1, Mathf.Max(1, Mathf.CeilToInt(v.Config.TutorialConfirmSeconds)));
+                    v.Calibration.ShowConfirmed(v.Config.AxeTutorialEnabled ? "튜토리얼" : "1스테이지",
+                        Mathf.Max(1, Mathf.CeilToInt(v.Config.TutorialConfirmSeconds)));
                     break;
                 case "stage":
                     ShowStage(v, stage);
@@ -237,7 +241,14 @@ namespace BeOdysseus.EditorTools
                 case "fail":
                     bool hasNextStage = stage < v.Stages.Count;
                     v.Result.Show(SampleResult(stage, parts[0] == "clear"), v.Stages.Get(stage - 1),
-                        hasNextStage ? GameFlow.NextStageLabel : GameFlow.BackToMenuLabel, v.Config.ResultCountdownSeconds);
+                        hasNextStage ? GameFlow.NextStageLabel : GameFlow.FinalResultLabel, v.Config.ResultCountdownSeconds);
+                    break;
+                case "final":
+                    // final/clear: 모두 클리어(ALL 트로피 CLEAR!), final/fail: 2스테이지만 실패(최종 결과)
+                    bool allClear = parts.Length > 1 && parts[1] == "clear";
+                    var stages = new List<StageSummary>();
+                    for (int i = 1; i <= v.Stages.Count; i++) stages.Add(new StageSummary(i, allClear || i != 2, 2, 3));
+                    v.FinalResult.Show(stages, SampleResult(v.Stages.Count, true), v.Stages.Get(v.Stages.Count - 1).ResultBackground);
                     break;
             }
         }
@@ -250,6 +261,7 @@ namespace BeOdysseus.EditorTools
             v.Calibration.Hide();
             v.StageHud.Hide();
             v.Result.Hide();
+            v.FinalResult.Hide();
             v.PauseButton.SetActive(false);
             v.PausePopup.SetActive(false);
         }
@@ -294,6 +306,7 @@ namespace BeOdysseus.EditorTools
                 StageHud = Ref<StageHud>(gameSo, "_stageHud"),
                 Calibration = Ref<CalibrationView>(gameSo, "_calibrationView"),
                 Result = Ref<ResultView>(gameSo, "_resultView"),
+                FinalResult = Ref<FinalResultView>(gameSo, "_finalResultView"),
                 PauseButton = Ref<UnityEngine.UI.Button>(pauseSo, "_pauseButton").gameObject,
                 PausePopup = Ref<GameObject>(pauseSo, "_popup"),
             };

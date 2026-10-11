@@ -16,8 +16,12 @@ namespace BeOdysseus
         [SerializeField] private Sprite _resultBackground;
         [Tooltip("태블릿에 보내는 몬스터 이름(docs/TABLET_LINK_PROTOCOL.md의 monster 값). 예: polyphemus, shade, siren")]
         [SerializeField] private string _monsterId;
+        [Tooltip("이 스테이지 몬스터까지 거리(m). 가까울수록 크게 보인다. 0이면 GameConfig의 Area Distance Meters를 쓴다.")]
+        [SerializeField, Min(0f)] private float _monsterDistanceMeters;
 
         public Sprite MonsterSprite => _monsterSprite;
+        /// <summary>몬스터 거리(m). 0이면 기본 거리.</summary>
+        public float MonsterDistanceMeters => _monsterDistanceMeters;
         public string MonsterId => _monsterId;
         public MonsterAnimationSet MonsterAnimation => _monsterAnimation;
         public Sprite ResultBackground => _resultBackground;

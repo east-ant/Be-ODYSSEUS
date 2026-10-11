@@ -13,10 +13,17 @@ namespace BeOdysseus
 
         private LineRenderer _frame;
         private Pose _front;
+        private float _distanceOverride;
 
         public bool IsSet { get; private set; }
+        /// <summary>방향을 정할 때의 카메라 위치와 겨눈 방향(롤 제외).</summary>
+        public Pose Front => _front;
         public Vector2 HalfSizeDegrees => _config.AreaHalfSizeDegrees;
-        public float DistanceMeters => _config.AreaDistanceMeters;
+        /// <summary>몬스터가 떠 있는 거리(m). 스테이지마다 바꿀 수 있고(SetDistance), 정하지 않으면 설정의 기본 거리.</summary>
+        public float DistanceMeters => _distanceOverride > 0f ? _distanceOverride : _config.AreaDistanceMeters;
+
+        /// <summary>이 스테이지 몬스터 거리. 0 이하면 기본 거리로 돌아간다. 각도 범위는 그대로라 가까울수록 몬스터만 크게 보인다.</summary>
+        public void SetDistance(float meters) => _distanceOverride = meters;
 
         private void Awake()
         {
@@ -37,6 +44,7 @@ namespace BeOdysseus
         public void Clear()
         {
             IsSet = false;
+            _distanceOverride = 0f;
             _frame.enabled = false;
         }
 

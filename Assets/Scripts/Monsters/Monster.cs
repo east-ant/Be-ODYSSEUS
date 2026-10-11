@@ -16,7 +16,7 @@ namespace BeOdysseus
     /// 위치는 활동 범위 기준 각도로 들고 있다.
     /// </summary>
     [RequireComponent(typeof(SpriteRenderer))]
-    public class Monster : MonoBehaviour
+    public class Monster : MonoBehaviour, IShotTarget
     {
         private enum Motion { Walking, Resting, Dying, Dead }
 
@@ -129,6 +129,22 @@ namespace BeOdysseus
             Bounds b = _renderer.sprite.bounds;
             return local.x >= b.min.x && local.x <= b.max.x && local.y >= b.min.y && local.y <= b.max.y;
         }
+
+        public bool IsActive => this != null && gameObject.activeInHierarchy;
+
+        /// <summary>조준선이 몬스터 평면과 만나는 점이 그림 사각형 안이면 명중.</summary>
+        public bool TryHit(Vector3 origin, Vector3 direction, out bool hit, out Vector3 impact)
+        {
+            if (!TryIntersect(origin, direction, out impact))
+            {
+                hit = false;
+                return false;
+            }
+            hit = Contains(impact);
+            return true;
+        }
+
+        public bool ArrowSticks(bool hit) => hit;
 
         private void Awake()
         {

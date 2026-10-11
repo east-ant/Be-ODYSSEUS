@@ -53,7 +53,8 @@ namespace BeOdysseus
 
         /// <summary>false면 발사 신호를 무시한다. 게임 진행이 정한다.</summary>
         public bool IsArmed { get; set; }
-        public Monster Target { get; set; }
+        /// <summary>판정 대상. 스테이지에서는 몬스터, 도끼 튜토리얼에서는 도끼 줄.</summary>
+        public IShotTarget Target { get; set; }
 
         private void OnEnable()
         {
@@ -98,12 +99,11 @@ namespace BeOdysseus
             float offset = float.NaN;
             float accuracy = 0f;
             Vector3 impact = aim.Position + aim.Forward * _config.AreaDistanceMeters;
-            if (Target != null && Target.gameObject.activeInHierarchy)
+            if (Target != null && Target.IsActive)
             {
-                if (Target.TryIntersect(aim.Position, aim.Forward, out Vector3 onPlane))
+                if (Target.TryHit(aim.Position, aim.Forward, out hit, out Vector3 onPlane))
                 {
-                    hit = Target.Contains(onPlane);
-                    // 몬스터에서 크게 벗어나 비스듬히 만나면 평면 위 점이 아주 멀어지므로, 그때는 활동 범위 거리의 점을 쓴다.
+                    // 대상에서 크게 벗어나 비스듬히 만나면 평면 위 점이 아주 멀어지므로, 그때는 활동 범위 거리의 점을 쓴다.
                     if (hit || Vector3.Distance(aim.Position, onPlane) <= _config.AreaDistanceMeters * 2f) impact = onPlane;
                 }
                 offset = Vector3.Angle(aim.Forward, Target.TargetPoint - aim.Position);
